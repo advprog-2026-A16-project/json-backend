@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.jsonbackend.filter;
+package id.ac.ui.cs.advprog.jsonbackend.auth.filter;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.JwtService;
 import jakarta.servlet.FilterChain;
