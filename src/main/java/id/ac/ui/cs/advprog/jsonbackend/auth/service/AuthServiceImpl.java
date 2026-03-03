@@ -7,10 +7,12 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -29,12 +31,15 @@ public class AuthServiceImpl implements AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new RuntimeException("Email sudah terdaftar");
+        if (!request.password().equals(request.confirmPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password dan konfirmasi password tidak cocok");
         }
 
-        Role userRole = request.role() != null ? request.role() : Role.TITIPERS;
-        User user = new User(request.email(), passwordEncoder.encode(request.password()), userRole);
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email sudah terdaftar");
+        }
+        
+        User user = new User(request.email(), passwordEncoder.encode(request.password()), Role.TITIPERS);
         userRepository.save(user);
 
         String jwtToken = jwtService.generateToken(user);
