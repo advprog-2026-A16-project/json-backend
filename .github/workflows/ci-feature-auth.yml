@@ -26,7 +26,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run unit tests
-        run: ./gradlew test
+        run: ./gradlew test -Dspring.profiles.active=test
 
       - name: SonarCloud Scan
         run: ./gradlew sonar --info --no-parallel --no-configuration-cache
