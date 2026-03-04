@@ -1,49 +1,57 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
-import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
-import org.springframework.web.bind.annotation.*;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
 
+    private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
+
     @GetMapping
-    public List<Product> getAllProducts() {
-        return List.of(
-            Product.builder()
-                .id("1")
-                .name("Limited Edition Sneakers")
-                .description("Exclusive sneakers from Tokyo")
-                .price(new BigDecimal("2500000"))
-                .stock(5)
-                .originCountry("Japan")
-                .jastiperId("jastiper-001")
-                .build(),
-            Product.builder()
-                .id("2")
-                .name("Korean Skincare Set")
-                .description("Popular K-beauty products")
-                .price(new BigDecimal("750000"))
-                .stock(10)
-                .originCountry("South Korea")
-                .jastiperId("jastiper-002")
-                .build()
-        );
+    public List<ProductResponse> getAllProducts() {
+        return productService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Product getProductById(@PathVariable String id) {
-        return Product.builder()
-            .id(id)
-            .name("Sample Product")
-            .description("This is a sample product")
-            .price(new BigDecimal("100000"))
-            .stock(10)
-            .originCountry("Japan")
-            .jastiperId("jastiper-001")
-            .build();
+    public ProductResponse getProductById(@PathVariable UUID id) {
+        return productService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProductResponse createProduct(@Valid @RequestBody ProductRequest request) {
+        return productService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public ProductResponse updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
+        return productService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProduct(@PathVariable UUID id) {
+        productService.delete(id);
     }
 }
