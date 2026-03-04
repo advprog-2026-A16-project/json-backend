@@ -1,0 +1,169 @@
+package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
+
+import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.repository.ProductRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ProductServiceImplTest {
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private ProductMapper productMapper;
+
+    @InjectMocks
+    private ProductServiceImpl productService;
+
+    @Test
+    void createProductSuccess() {
+        ProductRequest request = sampleRequest();
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productMapper.toEntity(request)).thenReturn(entity);
+        when(productRepository.save(entity)).thenReturn(entity);
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        ProductResponse result = productService.create(request);
+
+        assertEquals(response.getId(), result.getId());
+        verify(productMapper, times(1)).toEntity(request);
+        verify(productRepository, times(1)).save(entity);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
+    void createProductThrowsWhenPriceInvalid() {
+        ProductRequest request = sampleRequest();
+        request.setPrice(BigDecimal.ZERO);
+
+        assertThrows(InvalidProductException.class, () -> productService.create(request));
+
+        verify(productMapper, never()).toEntity(request);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void findAllProductsSuccess() {
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findAll()).thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.findAll();
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1)).findAll();
+    }
+
+    @Test
+    void findByIdThrowsWhenNotFound() {
+        UUID id = UUID.randomUUID();
+        when(productRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ProductNotFoundException.class, () -> productService.findById(id));
+        verify(productRepository, times(1)).findById(id);
+    }
+
+    @Test
+    void updateProductSuccess() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+        Product existing = sampleEntity();
+        ProductResponse response = sampleResponse(id);
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(productRepository.save(existing)).thenReturn(existing);
+        when(productMapper.toResponse(existing)).thenReturn(response);
+
+        ProductResponse result = productService.update(id, request);
+
+        assertEquals(id, result.getId());
+        verify(productMapper, times(1)).updateEntity(existing, request);
+        verify(productRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void deleteProductSuccess() {
+        UUID id = UUID.randomUUID();
+        Product existing = sampleEntity();
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        productService.delete(id);
+
+        verify(productRepository, times(1)).delete(existing);
+    }
+
+    private ProductRequest sampleRequest() {
+        return ProductRequest.builder()
+                .name("Sneakers Limited Edition")
+                .description("Beli di US")
+                .price(new BigDecimal("1500000"))
+                .stock(10)
+                .originCountry("US")
+                .purchaseDate(LocalDate.now().plusDays(7))
+                .jastiperId(UUID.randomUUID())
+                .build();
+    }
+
+    private Product sampleEntity() {
+        UUID id = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        return Product.builder()
+                .id(id)
+                .name("Sneakers Limited Edition")
+                .description("Beli di US")
+                .price(new BigDecimal("1500000"))
+                .stock(10)
+                .originCountry("US")
+                .purchaseDate(LocalDate.now().plusDays(7))
+                .jastiperId(UUID.randomUUID())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
+    private ProductResponse sampleResponse(UUID id) {
+        LocalDateTime now = LocalDateTime.now();
+        return ProductResponse.builder()
+                .id(id)
+                .name("Sneakers Limited Edition")
+                .description("Beli di US")
+                .price(new BigDecimal("1500000"))
+                .stock(10)
+                .originCountry("US")
+                .purchaseDate(LocalDate.now().plusDays(7))
+                .jastiperId(UUID.randomUUID())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+}
