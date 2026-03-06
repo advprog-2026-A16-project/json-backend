@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
+
 import lombok.*;
 
 @Getter
@@ -28,7 +30,7 @@ public class Wallet {
 
     public void debit(BigDecimal amount) {
         if(balance.compareTo(amount) < 0){
-            throw new RuntimeException("Saldo tidak cukup");
+            throw new InsufficientBalanceException();
         }
         balance = balance.subtract(amount);
     }

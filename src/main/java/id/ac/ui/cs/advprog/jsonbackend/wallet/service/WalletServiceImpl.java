@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.*;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.*;
 
 @Service
 public class WalletServiceImpl implements WalletService {
@@ -21,7 +22,7 @@ public class WalletServiceImpl implements WalletService {
 
     private Wallet getWallet(java.util.UUID userId){
         return walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Wallet tidak ditemukan"));
+                .orElseThrow(WalletNotFoundException::new);
     }
 
     @Override
