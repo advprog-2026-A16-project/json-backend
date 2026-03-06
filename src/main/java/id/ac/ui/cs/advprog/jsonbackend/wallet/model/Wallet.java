@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.jsonbackend.wallet;
+package id.ac.ui.cs.advprog.jsonbackend.wallet.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
