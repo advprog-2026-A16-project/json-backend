@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import lombok.*;
+
+@Getter
+@Setter
 @Entity
 @Table(name = "wallets")
 public class Wallet {
@@ -17,14 +21,6 @@ public class Wallet {
 
     @Column(nullable = false)
     private BigDecimal balance = BigDecimal.ZERO;
-
-    public UUID getId() { return id; }
-
-    public UUID getUserId() { return userId; }
-
-    public void setUserId(UUID userId) { this.userId = userId; }
-
-    public BigDecimal getBalance() { return balance; }
 
     public void credit(BigDecimal amount) {
         balance = balance.add(amount);
