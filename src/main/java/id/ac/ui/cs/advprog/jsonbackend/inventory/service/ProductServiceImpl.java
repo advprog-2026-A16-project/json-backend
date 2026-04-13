@@ -53,6 +53,9 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findByJastiperId(UUID jastiperId) {
+        if (jastiperId == null) {
+            throw new InvalidProductException("Jastiper id is required");
+        }
         return productRepository.findByJastiperId(jastiperId).stream()
                 .map(productMapper::toResponse)
                 .toList();
