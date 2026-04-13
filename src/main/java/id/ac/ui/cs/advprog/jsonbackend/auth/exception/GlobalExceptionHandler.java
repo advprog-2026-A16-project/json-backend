@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -9,6 +10,13 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(InvalidProductException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidProductException(InvalidProductException ex) {
+        return ResponseEntity
+                .status(400)
+                .body(Map.of("message", ex.getMessage()));
+    }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
