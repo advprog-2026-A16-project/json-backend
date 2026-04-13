@@ -103,6 +103,26 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void searchProductsByKeywordBlankShouldFallbackToFindAll() {
+        String keyword = "   ";
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findAll()).thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.searchByKeyword(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1)).findAll();
+        verify(productRepository, never())
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString());
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
     void findProductsByJastiperIdSuccess() {
         UUID jastiperId = UUID.randomUUID();
         Product entity = sampleEntity();
