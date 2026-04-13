@@ -170,13 +170,14 @@ class ProductServiceImplTest {
         Product existing = sampleEntity();
         existing.setStock(10);
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
         when(productRepository.save(existing)).thenReturn(existing);
 
         productService.reserveStock(productId, 3);
 
         assertEquals(7, existing.getStock());
-        verify(productRepository, times(1)).findById(productId);
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, never()).findById(productId);
         verify(productRepository, times(1)).save(existing);
     }
 
@@ -186,10 +187,11 @@ class ProductServiceImplTest {
         Product existing = sampleEntity();
         existing.setStock(2);
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
 
         assertThrows(InsufficientStockException.class, () -> productService.reserveStock(productId, 3));
-        verify(productRepository, times(1)).findById(productId);
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, never()).findById(productId);
         verify(productRepository, never()).save(existing);
     }
 
