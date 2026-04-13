@@ -70,4 +70,9 @@ public class Product {
     void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void reduceStock(int quantity) {
+        // RED skeleton: behavior will be tightened in GREEN.
+        this.stock -= quantity;
+    }
 }
