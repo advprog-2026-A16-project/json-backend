@@ -48,8 +48,9 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findByJastiperId(UUID jastiperId) {
-        // RED skeleton: will be implemented in GREEN step.
-        return List.of();
+        return productRepository.findByJastiperId(jastiperId).stream()
+                .map(productMapper::toResponse)
+                .toList();
     }
 
     @Override
