@@ -37,8 +37,12 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> searchByKeyword(String keyword) {
-        // RED skeleton: will be implemented in GREEN step.
-        return List.of();
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        return productRepository
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
+                .stream()
+                .map(productMapper::toResponse)
+                .toList();
     }
 
     @Override
