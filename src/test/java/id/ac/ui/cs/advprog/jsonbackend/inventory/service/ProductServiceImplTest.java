@@ -140,6 +140,12 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void findProductsByJastiperIdThrowsWhenNull() {
+        assertThrows(InvalidProductException.class, () -> productService.findByJastiperId(null));
+        verify(productRepository, never()).findByJastiperId(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(productRepository.findById(id)).thenReturn(Optional.empty());
