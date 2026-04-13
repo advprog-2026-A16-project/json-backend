@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -72,7 +73,9 @@ public class Product {
     }
 
     public void reduceStock(int quantity) {
-        // RED skeleton: behavior will be tightened in GREEN.
+        if (quantity > this.stock) {
+            throw new InsufficientStockException("Insufficient stock");
+        }
         this.stock -= quantity;
     }
 }
