@@ -69,6 +69,17 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createProductThrowsWhenJastiperIdMissing() {
+        ProductRequest request = sampleRequest();
+        request.setJastiperId(null);
+
+        assertThrows(InvalidProductException.class, () -> productService.create(request));
+
+        verify(productMapper, never()).toEntity(request);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findAllProductsSuccess() {
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
