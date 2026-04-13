@@ -63,7 +63,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void reserveStock(UUID productId, int quantity) {
-        // RED skeleton: behavior will be implemented in GREEN.
+        Product existing = getProductOrThrow(productId);
+        existing.reduceStock(quantity);
+        productRepository.save(existing);
     }
 
     @Override
