@@ -205,6 +205,13 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void reserveStockThrowsWhenProductIdNull() {
+        assertThrows(InvalidProductException.class, () -> productService.reserveStock(null, 1));
+        verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(productRepository.findById(id)).thenReturn(Optional.empty());
