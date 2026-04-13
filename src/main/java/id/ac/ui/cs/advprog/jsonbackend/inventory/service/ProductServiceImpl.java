@@ -63,7 +63,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void reserveStock(UUID productId, int quantity) {
-        Product existing = getProductOrThrow(productId);
+        Product existing = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
         existing.reduceStock(quantity);
         productRepository.save(existing);
     }
