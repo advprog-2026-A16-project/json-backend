@@ -69,6 +69,6 @@ public class ProductController {
     @PostMapping("/{id}/reserve")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reserveStock(@PathVariable UUID id, @RequestParam int quantity) {
-        // RED skeleton: service delegation will be added in GREEN.
+        productService.reserveStock(id, quantity);
     }
 }
