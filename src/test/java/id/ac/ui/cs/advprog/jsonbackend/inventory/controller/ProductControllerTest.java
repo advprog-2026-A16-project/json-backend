@@ -55,6 +55,19 @@ class ProductControllerTest {
     }
 
     @Test
+    void getProductsByJastiperShouldDelegateToService() {
+        UUID jastiperId = UUID.randomUUID();
+        ProductResponse response = sampleResponse();
+        when(productService.findByJastiperId(jastiperId)).thenReturn(List.of(response));
+
+        List<ProductResponse> result = productController.getProductsByJastiper(jastiperId);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productService, times(1)).findByJastiperId(jastiperId);
+    }
+
+    @Test
     void getProductByIdShouldReturnServiceResult() {
         UUID id = UUID.randomUUID();
         ProductResponse response = sampleResponse();

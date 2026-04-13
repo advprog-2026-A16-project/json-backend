@@ -11,6 +11,8 @@ public interface ProductService {
 
     List<ProductResponse> searchByKeyword(String keyword);
 
+    List<ProductResponse> findByJastiperId(UUID jastiperId);
+
     ProductResponse findById(UUID id);
 
     ProductResponse create(ProductRequest request);

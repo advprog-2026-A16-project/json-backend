@@ -103,6 +103,23 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void findProductsByJastiperIdSuccess() {
+        UUID jastiperId = UUID.randomUUID();
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findByJastiperId(jastiperId)).thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.findByJastiperId(jastiperId);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1)).findByJastiperId(jastiperId);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
     void findByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(productRepository.findById(id)).thenReturn(Optional.empty());

@@ -39,6 +39,11 @@ public class ProductController {
         return productService.searchByKeyword(keyword);
     }
 
+    @GetMapping("/jastiper/{jastiperId}")
+    public List<ProductResponse> getProductsByJastiper(@PathVariable UUID jastiperId) {
+        return productService.findByJastiperId(jastiperId);
+    }
+
     @GetMapping("/{id}")
     public ProductResponse getProductById(@PathVariable UUID id) {
         return productService.findById(id);
