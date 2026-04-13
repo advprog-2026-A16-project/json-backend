@@ -84,6 +84,25 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void searchProductsByKeywordSuccess() {
+        String keyword = "sneakers";
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword))
+                .thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.searchByKeyword(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1))
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
     void findByIdThrowsWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(productRepository.findById(id)).thenReturn(Optional.empty());

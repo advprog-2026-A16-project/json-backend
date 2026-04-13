@@ -9,6 +9,8 @@ import java.util.UUID;
 public interface ProductService {
     List<ProductResponse> findAll();
 
+    List<ProductResponse> searchByKeyword(String keyword);
+
     ProductResponse findById(UUID id);
 
     ProductResponse create(ProductRequest request);

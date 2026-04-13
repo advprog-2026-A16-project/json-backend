@@ -36,6 +36,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProductResponse> searchByKeyword(String keyword) {
+        // RED skeleton: will be implemented in GREEN step.
+        return List.of();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ProductResponse findById(UUID id) {
         Product product = getProductOrThrow(id);
         return productMapper.toResponse(product);

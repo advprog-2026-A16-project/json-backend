@@ -42,6 +42,19 @@ class ProductControllerTest {
     }
 
     @Test
+    void searchProductsShouldDelegateToService() {
+        String keyword = "sneakers";
+        ProductResponse response = sampleResponse();
+        when(productService.searchByKeyword(keyword)).thenReturn(List.of(response));
+
+        List<ProductResponse> result = productController.searchProducts(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productService, times(1)).searchByKeyword(keyword);
+    }
+
+    @Test
     void getProductByIdShouldReturnServiceResult() {
         UUID id = UUID.randomUUID();
         ProductResponse response = sampleResponse();

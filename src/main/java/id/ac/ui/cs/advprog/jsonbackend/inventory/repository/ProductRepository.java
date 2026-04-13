@@ -8,4 +8,7 @@ import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByJastiperId(UUID jastiperId);
+
+    List<Product> findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String nameKeyword,
+                                                                                   String descriptionKeyword);
 }
