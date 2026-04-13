@@ -63,6 +63,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void reserveStock(UUID productId, int quantity) {
+        if (productId == null) {
+            throw new InvalidProductException("Product id is required");
+        }
         if (quantity <= 0) {
             throw new InvalidProductException("Quantity must be greater than zero");
         }
