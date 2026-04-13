@@ -9,6 +9,12 @@ import java.util.UUID;
 public interface ProductService {
     List<ProductResponse> findAll();
 
+    List<ProductResponse> searchByKeyword(String keyword);
+
+    List<ProductResponse> findByJastiperId(UUID jastiperId);
+
+    void reserveStock(UUID productId, int quantity);
+
     ProductResponse findById(UUID id);
 
     ProductResponse create(ProductRequest request);

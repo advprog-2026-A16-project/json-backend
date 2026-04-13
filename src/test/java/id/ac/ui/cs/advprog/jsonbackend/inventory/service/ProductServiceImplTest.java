@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
@@ -69,6 +70,24 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createProductThrowsWhenJastiperIdMissing() {
+        ProductRequest request = sampleRequest();
+        request.setJastiperId(null);
+
+        assertThrows(InvalidProductException.class, () -> productService.create(request));
+
+        verify(productMapper, never()).toEntity(request);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createProductThrowsWhenRequestNull() {
+        assertThrows(InvalidProductException.class, () -> productService.create(null));
+        verify(productMapper, never()).toEntity(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findAllProductsSuccess() {
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
@@ -81,6 +100,125 @@ class ProductServiceImplTest {
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
         verify(productRepository, times(1)).findAll();
+    }
+
+    @Test
+    void searchProductsByKeywordSuccess() {
+        String keyword = "sneakers";
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword))
+                .thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.searchByKeyword(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1))
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
+    void searchProductsByKeywordBlankShouldFallbackToFindAll() {
+        String keyword = "   ";
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findAll()).thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.searchByKeyword(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1)).findAll();
+        verify(productRepository, never())
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString());
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
+    void findProductsByJastiperIdSuccess() {
+        UUID jastiperId = UUID.randomUUID();
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productRepository.findByJastiperId(jastiperId)).thenReturn(List.of(entity));
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        List<ProductResponse> result = productService.findByJastiperId(jastiperId);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productRepository, times(1)).findByJastiperId(jastiperId);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
+    void findProductsByJastiperIdThrowsWhenNull() {
+        assertThrows(InvalidProductException.class, () -> productService.findByJastiperId(null));
+        verify(productRepository, never()).findByJastiperId(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void reserveStockSuccess() {
+        UUID productId = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setStock(10);
+
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.save(existing)).thenReturn(existing);
+
+        productService.reserveStock(productId, 3);
+
+        assertEquals(7, existing.getStock());
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, never()).findById(productId);
+        verify(productRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void reserveStockThrowsWhenInsufficient() {
+        UUID productId = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setStock(2);
+
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
+
+        assertThrows(InsufficientStockException.class, () -> productService.reserveStock(productId, 3));
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, never()).findById(productId);
+        verify(productRepository, never()).save(existing);
+    }
+
+    @Test
+    void reserveStockThrowsWhenQuantityNotPositive() {
+        UUID productId = UUID.randomUUID();
+
+        assertThrows(InvalidProductException.class, () -> productService.reserveStock(productId, 0));
+        verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void reserveStockThrowsWhenProductIdNull() {
+        assertThrows(InvalidProductException.class, () -> productService.reserveStock(null, 1));
+        verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void reserveStockThrowsWhenProductNotFound() {
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.empty());
+
+        assertThrows(ProductNotFoundException.class, () -> productService.reserveStock(productId, 1));
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
