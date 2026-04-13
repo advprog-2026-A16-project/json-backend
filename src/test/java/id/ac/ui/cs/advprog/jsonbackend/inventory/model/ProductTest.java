@@ -29,6 +29,14 @@ class ProductTest {
         assertThrows(InsufficientStockException.class, () -> product.reduceStock(3));
     }
 
+    @Test
+    void reduceStockThrowsWhenQuantityNotPositive() {
+        Product product = sampleProduct(10);
+
+        assertThrows(IllegalArgumentException.class, () -> product.reduceStock(0));
+        assertThrows(IllegalArgumentException.class, () -> product.reduceStock(-1));
+    }
+
     private Product sampleProduct(int stock) {
         LocalDateTime now = LocalDateTime.now();
         return Product.builder()
