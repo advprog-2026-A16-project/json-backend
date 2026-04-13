@@ -63,6 +63,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void reserveStock(UUID productId, int quantity) {
+        if (quantity <= 0) {
+            throw new InvalidProductException("Quantity must be greater than zero");
+        }
         Product existing = productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
         existing.reduceStock(quantity);
