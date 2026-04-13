@@ -100,6 +100,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void validateBusinessRules(ProductRequest request) {
+        if (request.getJastiperId() == null) {
+            throw new InvalidProductException("Jastiper id is required");
+        }
         if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidProductException("Price must be greater than zero");
         }
