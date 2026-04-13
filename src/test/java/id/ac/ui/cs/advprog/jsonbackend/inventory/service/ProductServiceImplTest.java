@@ -80,6 +80,13 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createProductThrowsWhenRequestNull() {
+        assertThrows(InvalidProductException.class, () -> productService.create(null));
+        verify(productMapper, never()).toEntity(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findAllProductsSuccess() {
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
