@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -69,6 +70,9 @@ public class ProductController {
     @PostMapping("/{id}/reserve")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reserveStock(@PathVariable UUID id, @RequestParam int quantity) {
+        if (quantity <= 0) {
+            throw new InvalidProductException("Quantity must be greater than zero");
+        }
         productService.reserveStock(id, quantity);
     }
 }
