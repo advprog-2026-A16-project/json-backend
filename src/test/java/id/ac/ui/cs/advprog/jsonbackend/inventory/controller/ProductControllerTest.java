@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -123,6 +125,14 @@ class ProductControllerTest {
         productController.reserveStock(id, 3);
 
         verify(productService, times(1)).reserveStock(id, 3);
+    }
+
+    @Test
+    void reserveStockShouldRejectNonPositiveQuantity() {
+        UUID id = UUID.randomUUID();
+
+        assertThrows(InvalidProductException.class, () -> productController.reserveStock(id, 0));
+        verify(productService, times(0)).reserveStock(id, 0);
     }
 
     private ProductRequest sampleRequest() {
