@@ -116,6 +116,15 @@ class ProductControllerTest {
         verify(productService, times(1)).delete(id);
     }
 
+    @Test
+    void reserveStockShouldDelegateToService() {
+        UUID id = UUID.randomUUID();
+
+        productController.reserveStock(id, 3);
+
+        verify(productService, times(1)).reserveStock(id, 3);
+    }
+
     private ProductRequest sampleRequest() {
         return ProductRequest.builder()
                 .name("Sneakers Limited Edition")

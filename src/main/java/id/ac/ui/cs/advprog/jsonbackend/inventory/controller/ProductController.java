@@ -65,4 +65,10 @@ public class ProductController {
     public void deleteProduct(@PathVariable UUID id) {
         productService.delete(id);
     }
+
+    @PostMapping("/{id}/reserve")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reserveStock(@PathVariable UUID id, @RequestParam int quantity) {
+        // RED skeleton: service delegation will be added in GREEN.
+    }
 }
