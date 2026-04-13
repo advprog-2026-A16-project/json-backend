@@ -62,6 +62,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public void reserveStock(UUID productId, int quantity) {
+        // RED skeleton: behavior will be implemented in GREEN.
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public ProductResponse findById(UUID id) {
         Product product = getProductOrThrow(id);

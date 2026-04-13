@@ -13,6 +13,8 @@ public interface ProductService {
 
     List<ProductResponse> findByJastiperId(UUID jastiperId);
 
+    void reserveStock(UUID productId, int quantity);
+
     ProductResponse findById(UUID id);
 
     ProductResponse create(ProductRequest request);

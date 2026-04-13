@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
@@ -161,6 +162,35 @@ class ProductServiceImplTest {
     void findProductsByJastiperIdThrowsWhenNull() {
         assertThrows(InvalidProductException.class, () -> productService.findByJastiperId(null));
         verify(productRepository, never()).findByJastiperId(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void reserveStockSuccess() {
+        UUID productId = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setStock(10);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.save(existing)).thenReturn(existing);
+
+        productService.reserveStock(productId, 3);
+
+        assertEquals(7, existing.getStock());
+        verify(productRepository, times(1)).findById(productId);
+        verify(productRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void reserveStockThrowsWhenInsufficient() {
+        UUID productId = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setStock(2);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(existing));
+
+        assertThrows(InsufficientStockException.class, () -> productService.reserveStock(productId, 3));
+        verify(productRepository, times(1)).findById(productId);
+        verify(productRepository, never()).save(existing);
     }
 
     @Test
