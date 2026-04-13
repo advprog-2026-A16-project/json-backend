@@ -38,6 +38,11 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public List<ProductResponse> searchByKeyword(String keyword) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isEmpty()) {
+            return productRepository.findAll().stream()
+                    .map(productMapper::toResponse)
+                    .toList();
+        }
         return productRepository
                 .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
                 .stream()
