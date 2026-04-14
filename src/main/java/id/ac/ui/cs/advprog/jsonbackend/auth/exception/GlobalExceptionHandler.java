@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleInvalidProductException(InvalidProductException ex) {
         return ResponseEntity
                 .status(400)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientStockException(InsufficientStockException ex) {
+        return ResponseEntity
+                .status(409)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleProductNotFoundException(ProductNotFoundException ex) {
+        return ResponseEntity
+                .status(404)
                 .body(Map.of("message", ex.getMessage()));
     }
 
