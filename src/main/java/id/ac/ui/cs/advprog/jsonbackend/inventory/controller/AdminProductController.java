@@ -31,7 +31,6 @@ public class AdminProductController {
 
     @PutMapping("/{id}")
     public ProductResponse updateProductForAdmin(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
-        // RED skeleton: service delegation will be added in GREEN.
-        return null;
+        return productService.update(id, request);
     }
 }
