@@ -20,7 +20,6 @@ public class AdminProductController {
 
     @GetMapping
     public List<ProductResponse> getAllProductsForAdmin() {
-        // RED skeleton: service delegation will be added in GREEN.
-        return List.of();
+        return productService.findAll();
     }
 }
