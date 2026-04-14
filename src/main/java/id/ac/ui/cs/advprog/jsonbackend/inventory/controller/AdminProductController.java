@@ -40,6 +40,6 @@ public class AdminProductController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProductForAdmin(@PathVariable UUID id) {
-        // RED skeleton: service delegation will be added in GREEN.
+        productService.delete(id);
     }
 }
