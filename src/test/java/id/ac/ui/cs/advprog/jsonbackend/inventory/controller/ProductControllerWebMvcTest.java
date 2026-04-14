@@ -15,7 +15,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.UUID;
 
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -73,5 +75,16 @@ class ProductControllerWebMvcTest {
                         .queryParam("quantity", "1"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Product not found with id: " + id));
+    }
+
+    @Test
+    void reserveStockReturnsNoContentWhenSuccess() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/products/{id}/reserve", id)
+                        .queryParam("quantity", "1"))
+                .andExpect(status().isNoContent());
+
+        verify(productService, times(1)).reserveStock(id, 1);
     }
 }
