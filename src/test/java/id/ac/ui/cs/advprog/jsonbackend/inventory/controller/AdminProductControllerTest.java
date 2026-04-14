@@ -55,6 +55,15 @@ class AdminProductControllerTest {
         verify(productService, times(1)).update(id, request);
     }
 
+    @Test
+    void deleteProductForAdminShouldDelegateToService() {
+        UUID id = UUID.randomUUID();
+
+        adminProductController.deleteProductForAdmin(id);
+
+        verify(productService, times(1)).delete(id);
+    }
+
     private ProductRequest sampleRequest() {
         return ProductRequest.builder()
                 .name("Updated Product")
