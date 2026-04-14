@@ -79,6 +79,16 @@ class AdminProductControllerTest {
     }
 
     @Test
+    void updateProductForAdminShouldRejectNonAdmin() {
+        authenticateAs(Role.TITIPERS);
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+
+        assertThrows(ResponseStatusException.class, () -> adminProductController.updateProductForAdmin(id, request));
+        verify(productService, never()).update(id, request);
+    }
+
+    @Test
     void deleteProductForAdminShouldDelegateToService() {
         authenticateAs(Role.ADMIN);
         UUID id = UUID.randomUUID();
@@ -86,6 +96,15 @@ class AdminProductControllerTest {
         adminProductController.deleteProductForAdmin(id);
 
         verify(productService, times(1)).delete(id);
+    }
+
+    @Test
+    void deleteProductForAdminShouldRejectNonAdmin() {
+        authenticateAs(Role.JASTIPER);
+        UUID id = UUID.randomUUID();
+
+        assertThrows(ResponseStatusException.class, () -> adminProductController.deleteProductForAdmin(id));
+        verify(productService, never()).delete(id);
     }
 
     private ProductRequest sampleRequest() {
