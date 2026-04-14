@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,5 +60,18 @@ class ProductControllerWebMvcTest {
                         .queryParam("quantity", "5"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Insufficient stock"));
+    }
+
+    @Test
+    void reserveStockReturnsNotFoundWhenProductMissing() throws Exception {
+        UUID id = UUID.randomUUID();
+        doThrow(new ProductNotFoundException("Product not found with id: " + id))
+                .when(productService)
+                .reserveStock(id, 1);
+
+        mockMvc.perform(post("/api/products/{id}/reserve", id)
+                        .queryParam("quantity", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Product not found with id: " + id));
     }
 }
