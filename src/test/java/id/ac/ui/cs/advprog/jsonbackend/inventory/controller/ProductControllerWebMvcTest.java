@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,5 +46,18 @@ class ProductControllerWebMvcTest {
                 .andExpect(jsonPath("$.message").value("Quantity must be greater than zero"));
 
         verifyNoInteractions(productService);
+    }
+
+    @Test
+    void reserveStockReturnsConflictWhenInsufficientStock() throws Exception {
+        UUID id = UUID.randomUUID();
+        doThrow(new InsufficientStockException("Insufficient stock"))
+                .when(productService)
+                .reserveStock(id, 5);
+
+        mockMvc.perform(post("/api/products/{id}/reserve", id)
+                        .queryParam("quantity", "5"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Insufficient stock"));
     }
 }
