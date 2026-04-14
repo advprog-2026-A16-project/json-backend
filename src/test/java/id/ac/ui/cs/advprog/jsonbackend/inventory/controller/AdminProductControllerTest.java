@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,32 @@ class AdminProductControllerTest {
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
         verify(productService, times(1)).findAll();
+    }
+
+    @Test
+    void updateProductForAdminShouldDelegateToService() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+        ProductResponse response = sampleResponse();
+        response.setId(id);
+        when(productService.update(id, request)).thenReturn(response);
+
+        ProductResponse result = adminProductController.updateProductForAdmin(id, request);
+
+        assertEquals(id, result.getId());
+        verify(productService, times(1)).update(id, request);
+    }
+
+    private ProductRequest sampleRequest() {
+        return ProductRequest.builder()
+                .name("Updated Product")
+                .description("Updated Description")
+                .price(new BigDecimal("2000000"))
+                .stock(8)
+                .originCountry("JP")
+                .purchaseDate(LocalDate.now().plusDays(5))
+                .jastiperId(UUID.randomUUID())
+                .build();
     }
 
     private ProductResponse sampleResponse() {
