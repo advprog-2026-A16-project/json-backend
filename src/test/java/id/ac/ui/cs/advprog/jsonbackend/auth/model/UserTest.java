@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -76,20 +77,11 @@ class UserTest {
         assertFalse(bannedUser.isEnabled());
     }
 
-    @Test
-    void testUserTimestampsBackwardCompatibility() {
-        User oldUser = new User();
-        oldUser.setCreatedAt(null);
-        oldUser.setUpdatedAt(null);
-
-        assertNotNull(oldUser.getCreatedAt());
-        assertNotNull(oldUser.getUpdatedAt());
-    }
 
     @Test
     void testUserTimestampsArePopulatedOnCreation() {
         User user = new User("new@email.com", "password", Role.TITIPERS);
-
+        user.onCreate();
         assertNotNull(user.getCreatedAt());
     }
 

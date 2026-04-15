@@ -8,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -34,9 +35,15 @@ public class User implements UserDetails {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(255) default 'ACTIVE'")
+    @Column(nullable = false, length = 20)
     @Builder.Default
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     public User() {}
 
@@ -44,6 +51,17 @@ public class User implements UserDetails {
         this.email = email;
         this.password = password;
         this.role = role;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     @Override
@@ -69,7 +87,7 @@ public class User implements UserDetails {
     }
 
     /**
-     * add manual account status for backward compability
+     * backward compability logic
      */
     public AccountStatus getAccountStatus() {
         return accountStatus != null ? accountStatus : AccountStatus.ACTIVE;
