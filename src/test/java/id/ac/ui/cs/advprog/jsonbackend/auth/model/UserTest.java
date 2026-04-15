@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.model;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
@@ -7,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 class UserTest {
 
@@ -61,7 +63,7 @@ class UserTest {
     void testUserHasDefaultActiveAccountStatus() {
         User newUser = new User("new@email.com", "password", Role.TITIPERS);
 
-        assertThat(AccountStatus.ACTIVE, newUser.getAccountStatus());
+        assertEquals(AccountStatus.ACTIVE, newUser.getAccountStatus());
         assertTrue(newUser.isEnabled());
     }
 
@@ -70,7 +72,7 @@ class UserTest {
         User bannedUser = new User("new@email.com", "password", Role.TITIPERS);
         bannedUser.setAccountStatus(AccountStatus.BANNED);
 
-        assertThat(AccountStatus.BANNED, bannedUser.getAccountStatus());
+        assertEquals(AccountStatus.BANNED, bannedUser.getAccountStatus());
         assertFalse(bannedUser.isEnabled());
     }
 }
