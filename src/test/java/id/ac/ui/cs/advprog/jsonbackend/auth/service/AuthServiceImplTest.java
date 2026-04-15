@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
@@ -103,5 +104,22 @@ class AuthServiceImplTest {
         assertNotNull(response);
         assertEquals("jwt-token", response.token());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+    }
+
+    @Test
+    void whenLoginWithBannedAccount_thenThrowAccountBannedException() {
+        LoginRequest request = new LoginRequest("banned@email.com", "password");
+        User bannedUser = User.builder()
+                .email("banned@email.com")
+                .password("encoded_password")
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.BANNED)
+                .build();
+
+        when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(bannedUser));
+
+        assertThrows(AccountBannedException.class, () -> authService.login(request));
+
+        verify(jwtService, never()).generateToken(any(User.class));
     }
 }
