@@ -6,6 +6,8 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +28,8 @@ import java.util.UUID;
 @RequestMapping("/api/admin/products")
 public class AdminProductController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminProductController.class);
+
     private final ProductService productService;
 
     public AdminProductController(ProductService productService) {
@@ -34,27 +38,31 @@ public class AdminProductController {
 
     @GetMapping
     public List<ProductResponse> getAllProductsForAdmin() {
-        ensureAdminAccess();
+        User admin = ensureAdminAccess();
+        log.info("Admin action: LIST_PRODUCTS by {}", admin.getEmail());
         return productService.findAll();
     }
 
     @PutMapping("/{id}")
     public ProductResponse updateProductForAdmin(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
-        ensureAdminAccess();
+        User admin = ensureAdminAccess();
+        log.info("Admin action: UPDATE_PRODUCT by {} for productId={}", admin.getEmail(), id);
         return productService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProductForAdmin(@PathVariable UUID id) {
-        ensureAdminAccess();
+        User admin = ensureAdminAccess();
+        log.info("Admin action: DELETE_PRODUCT by {} for productId={}", admin.getEmail(), id);
         productService.delete(id);
     }
 
-    private void ensureAdminAccess() {
+    private User ensureAdminAccess() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof User user) || user.getRole() != Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         }
+        return user;
     }
 }
