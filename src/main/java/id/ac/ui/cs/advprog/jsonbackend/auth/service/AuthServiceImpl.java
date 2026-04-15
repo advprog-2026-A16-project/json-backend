@@ -4,6 +4,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
@@ -48,12 +50,17 @@ public class AuthServiceImpl implements AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(UserNotFoundException::new);
+
+        if (user.getAccountStatus() == AccountStatus.BANNED) {
+            throw new AccountBannedException("Your account has been banned.");
+        }
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+        );
 
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponse(jwtToken, "Login successful");

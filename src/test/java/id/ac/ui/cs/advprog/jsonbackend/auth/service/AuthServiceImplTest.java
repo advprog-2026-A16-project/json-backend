@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
