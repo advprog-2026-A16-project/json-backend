@@ -75,4 +75,21 @@ class UserTest {
         assertEquals(AccountStatus.BANNED, bannedUser.getAccountStatus());
         assertFalse(bannedUser.isEnabled());
     }
+
+    @Test
+    void testUserTimestampsBackwardCompatibility() {
+        User oldUser = new User();
+        oldUser.setCreatedAt(null);
+        oldUser.setUpdatedAt(null);
+
+        assertNotNull(oldUser.getCreatedAt());
+        assertNotNull(oldUser.getUpdatedAt());
+    }
+
+    @Test
+    void testUserTimestampsArePopulatedOnCreation() {
+        User user = new User("new@email.com", "password", Role.TITIPERS);
+
+        assertNotNull(user.getCreatedAt());
+    }
 }
