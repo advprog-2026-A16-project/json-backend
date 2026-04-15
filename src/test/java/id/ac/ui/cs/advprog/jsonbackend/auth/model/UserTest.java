@@ -92,4 +92,25 @@ class UserTest {
 
         assertNotNull(user.getCreatedAt());
     }
+
+    @Test
+    void testManualLifecycleCallbacks() throws InterruptedException {
+        User user = new User();
+
+         assertNull(user.getCreatedAt());
+        user.onCreate();
+
+        LocalDateTime createdTime = user.getCreatedAt();
+        LocalDateTime updatedTime = user.getUpdatedAt();
+
+        assertNotNull(createdTime);
+        assertNotNull(updatedTime);
+        assertEquals(createdTime, updatedTime);
+
+         Thread.sleep(10);
+
+        user.onUpdate();
+
+        assertTrue(user.getUpdatedAt().isAfter(createdTime));
+    }
 }
