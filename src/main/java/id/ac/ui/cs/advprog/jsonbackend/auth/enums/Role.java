@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.jsonbackend.auth.model;
+package id.ac.ui.cs.advprog.jsonbackend.auth.enums;
 
 public enum Role {
     ADMIN,

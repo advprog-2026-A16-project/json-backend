@@ -3,7 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

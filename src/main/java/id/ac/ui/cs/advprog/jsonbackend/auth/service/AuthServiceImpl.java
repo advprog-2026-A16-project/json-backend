@@ -7,15 +7,13 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthServiceImpl implements AuthService {
