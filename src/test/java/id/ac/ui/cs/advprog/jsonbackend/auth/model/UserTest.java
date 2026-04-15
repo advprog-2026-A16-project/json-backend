@@ -56,4 +56,21 @@ class UserTest {
         assertThat(user.getPassword()).isEqualTo("newpass");
         assertThat(user.getRole()).isEqualTo(Role.TITIPERS);
     }
+
+    @Test
+    void testUserHasDefaultActiveAccountStatus() {
+        User newUser = new User("new@email.com", "password", Role.TITIPERS);
+
+        assertThat(AccountStatus.ACTIVE, newUser.getAccountStatus());
+        assertTrue(newUser.isEnabled());
+    }
+
+    @Test
+    void testUserBannedStatus() {
+        User bannedUser = new User("new@email.com", "password", Role.TITIPERS);
+        bannedUser.setAccountStatus(AccountStatus.BANNED);
+
+        assertThat(AccountStatus.BANNED, bannedUser.getAccountStatus());
+        assertFalse(bannedUser.isEnabled());
+    }
 }
