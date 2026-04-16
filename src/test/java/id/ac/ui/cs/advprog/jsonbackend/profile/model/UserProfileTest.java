@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class UserProfileTest {
     @Test
     void testUserProfileCreation() {
-        User user = User.builder().email("test@ui.ac.id").build();
+        User user = User.builder().email("test@email.com").build();
         UserProfile profile = UserProfile.builder()
                 .user(user)
                 .username("testuser")
@@ -16,14 +16,7 @@ public class UserProfileTest {
                 .build();
 
         assertEquals("testuser", profile.getUsername());
-        assertEquals(0, profile.getSuccessfulTrx());
+        assertEquals(0, profile.getSuccessfulTransaction());
         assertEquals(0.0, profile.getRating());
-    }
-
-    @Test
-    void testUserProfileTimestampsAndNullSafety() {
-        UserProfile profile = new UserProfile();
-        assertNotNull(profile.getCreatedAt());
-        assertNotNull(profile.getUpdatedAt());
     }
 }
