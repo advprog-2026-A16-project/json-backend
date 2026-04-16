@@ -22,7 +22,8 @@ import java.util.UUID;
 public class User implements UserDetails {
 
     @Id
-    private UUID id = UUID.randomUUID();
+    @GeneratedValue
+    private UUID id;
 
     @Column(unique = true, nullable = false, length = 255)
     private String email;
