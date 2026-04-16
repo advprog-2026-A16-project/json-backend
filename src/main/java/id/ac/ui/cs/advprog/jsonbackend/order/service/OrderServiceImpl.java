@@ -1,12 +1,14 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
@@ -48,7 +50,7 @@ public class OrderServiceImpl implements OrderService {
         // TODO: (Wallet) Panggil WalletService untuk potong saldo
 
         // TODO: (Inventory) Kurang stok
-        // productService.decreaseStock(product.getId(), request.getQuantity());
+        productService.reserveStock(product.getId(), request.getQuantity());
 
         // Rakit data pesanan
         Order order = orderMapper.toEntity(request);
@@ -63,12 +65,49 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(saved);
     }
 
+    // Ambil semua data pesanan
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findAll() {
+        return orderRepository.findAll().stream()
+                .map(orderMapper::toResponse)
+                .toList();
+    }
+
+    // Cari pesanan berdasarkan ID
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse findById(UUID id) {
+        Order order = getOrderOrThrow(id);
+        return orderMapper.toResponse(order);
+    }
+
+    // Ambil riwayat pesanan milik Titiper
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findByTitipersId(UUID titipersId) {
+        return orderRepository.findByTitipersId(titipersId).stream()
+                .map(orderMapper::toResponse)
+                .toList();
+    }
+
+    // Ambil daftar pesanan yang harus diproses Jastiper
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findByJastiperId(UUID jastiperId) {
+        return orderRepository.findByJastiperId(jastiperId).stream()
+                .map(orderMapper::toResponse)
+                .toList();
+    }
+
     // Placeholder fungsi lainnya
-    @Override public List<OrderResponse> findAll() { return null; }
-    @Override public OrderResponse findById(UUID id) { return null; }
-    @Override public List<OrderResponse> findByTitipersId(UUID titipersId) { return null; }
-    @Override public List<OrderResponse> findByJastiperId(UUID jastiperId) { return null; }
     @Override public OrderResponse updateStatus(UUID id, OrderStatusUpdateRequest request) { return null; }
     @Override public OrderResponse cancelByJastiper(UUID id) { return null; }
     @Override public OrderResponse giveRating(UUID id, OrderRatingRequest request) { return null; }
+
+    // Helper untuk cari pesanan atau lempar error
+    private Order getOrderOrThrow(UUID id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+    }
 }
