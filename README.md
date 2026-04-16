@@ -45,7 +45,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
 
 ### Setup PostgreSQL via Docker
 
-#### 1️⃣ Install Docker
+#### 1. Install Docker
 
 - Windows / macOS
 
@@ -60,17 +60,17 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
   docker compose version
   ```
 
-#### 2️⃣ Pastikan `docker-compose.yml` ada di direktori root proyek
+#### 2. Pastikan `docker-compose.yml` ada di direktori root proyek
 
 <img width="461" height="517" alt="image" src="https://github.com/user-attachments/assets/7a384d84-f55d-4128-8a15-505d97496c59" />
 
-#### 3️⃣ Jalankan container PostgreSQL di cmd/powershell
+#### 3. Jalankan container PostgreSQL di cmd/powershell
 
   ```
   docker compose up -d
   ```
 
-#### 4️⃣ Konfigurasi application.properties
+#### 4. Konfigurasi application.properties
 
 - Pastikan file src/main/resources/application.properties berisi:
 
@@ -83,7 +83,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
   spring.jpa.show-sql=true
   ```
 
-#### 5️⃣ Jalankan Project via Intellij
+#### 5. Jalankan Project via Intellij
 
 - Jika berhasil, log akan menampilkan:
   
@@ -94,7 +94,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
 
 ### Setup PostgreSQL via Manual
 
-#### 1️⃣ Install PostgreSQL
+#### 1. Install PostgreSQL
 
   Download dan install PostgreSQL sesuai OS masing-masing.
 
@@ -108,7 +108,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
 
   Pastikan service PostgreSQL berjalan.
 
-#### 2️⃣ Buat Database
+#### 2. Buat Database
 
 - Masuk ke psql (versi terminal), lalu jalankan:
 
@@ -119,7 +119,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
 
 - Pastikan database berhasil dibuat.
 
-#### 4️⃣ Konfigurasi application.properties
+#### 3. Konfigurasi application.properties
 
 - Pastikan file src/main/resources/application.properties berisi:
 
@@ -132,7 +132,7 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
   spring.jpa.show-sql=true
   ```
 
-#### 5️⃣ Jalankan Project via Intellij
+#### 4. Jalankan Project via Intellij
 
 - Jika berhasil, log akan menampilkan:
 
@@ -141,4 +141,21 @@ Tiap anggota tim bisa ganti DB_PASSWORD sesuai lokal masing-masing.
   Tomcat started on port 8080
   ```
   
-  ## API Documentation
+## API Documentation
+
+Dokumentasi API tersedia melalui Swagger UI dan endpoint OpenAPI JSON.
+
+### Local
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+### Staging
+
+- Swagger UI: `https://json-backend-staging-9413d4381c05.herokuapp.com/swagger-ui/index.html`
+- OpenAPI JSON: `https://json-backend-staging-9413d4381c05.herokuapp.com/v3/api-docs`
+
+Catatan:
+
+- Endpoint publik inventory dapat diakses langsung sesuai policy security saat ini.
+- Endpoint yang butuh autentikasi gunakan tombol `Authorize` di Swagger UI dengan format `Bearer <JWT_TOKEN>`.

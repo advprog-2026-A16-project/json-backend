@@ -36,6 +36,47 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProductResponse> searchByKeyword(String keyword) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isEmpty()) {
+            return productRepository.findAll().stream()
+                    .map(productMapper::toResponse)
+                    .toList();
+        }
+        return productRepository
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
+                .stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findByJastiperId(UUID jastiperId) {
+        if (jastiperId == null) {
+            throw new InvalidProductException("Jastiper id is required");
+        }
+        return productRepository.findByJastiperId(jastiperId).stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public void reserveStock(UUID productId, int quantity) {
+        if (productId == null) {
+            throw new InvalidProductException("Product id is required");
+        }
+        if (quantity <= 0) {
+            throw new InvalidProductException("Quantity must be greater than zero");
+        }
+        Product existing = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+        existing.reduceStock(quantity);
+        productRepository.save(existing);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ProductResponse findById(UUID id) {
         Product product = getProductOrThrow(id);
         return productMapper.toResponse(product);
@@ -73,6 +114,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void validateBusinessRules(ProductRequest request) {
+        if (request == null) {
+            throw new InvalidProductException("Product request is required");
+        }
+        if (request.getJastiperId() == null) {
+            throw new InvalidProductException("Jastiper id is required");
+        }
         if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidProductException("Price must be greater than zero");
         }

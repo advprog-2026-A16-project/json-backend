@@ -1,0 +1,19 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: ["Backend Test & Quality"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy-production-aws:
+    name: TODO - Production Deploy
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: TODO
+        run: echo "TODO!"

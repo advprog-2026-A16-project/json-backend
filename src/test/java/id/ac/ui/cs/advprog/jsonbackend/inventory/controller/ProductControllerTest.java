@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,6 +41,32 @@ class ProductControllerTest {
         assertEquals(1, result.size());
         assertEquals("Sneakers Limited Edition", result.getFirst().getName());
         verify(productService, times(1)).findAll();
+    }
+
+    @Test
+    void searchProductsShouldDelegateToService() {
+        String keyword = "sneakers";
+        ProductResponse response = sampleResponse();
+        when(productService.searchByKeyword(keyword)).thenReturn(List.of(response));
+
+        List<ProductResponse> result = productController.searchProducts(keyword);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productService, times(1)).searchByKeyword(keyword);
+    }
+
+    @Test
+    void getProductsByJastiperShouldDelegateToService() {
+        UUID jastiperId = UUID.randomUUID();
+        ProductResponse response = sampleResponse();
+        when(productService.findByJastiperId(jastiperId)).thenReturn(List.of(response));
+
+        List<ProductResponse> result = productController.getProductsByJastiper(jastiperId);
+
+        assertEquals(1, result.size());
+        assertEquals(response.getId(), result.getFirst().getId());
+        verify(productService, times(1)).findByJastiperId(jastiperId);
     }
 
     @Test
@@ -88,6 +116,23 @@ class ProductControllerTest {
         productController.deleteProduct(id);
 
         verify(productService, times(1)).delete(id);
+    }
+
+    @Test
+    void reserveStockShouldDelegateToService() {
+        UUID id = UUID.randomUUID();
+
+        productController.reserveStock(id, 3);
+
+        verify(productService, times(1)).reserveStock(id, 3);
+    }
+
+    @Test
+    void reserveStockShouldRejectNonPositiveQuantity() {
+        UUID id = UUID.randomUUID();
+
+        assertThrows(InvalidProductException.class, () -> productController.reserveStock(id, 0));
+        verify(productService, times(0)).reserveStock(id, 0);
     }
 
     private ProductRequest sampleRequest() {
