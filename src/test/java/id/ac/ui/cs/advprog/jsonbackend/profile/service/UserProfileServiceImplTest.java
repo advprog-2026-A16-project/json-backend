@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 public class UserProfileServiceImplTest {
@@ -27,7 +28,7 @@ public class UserProfileServiceImplTest {
 
         when(userProfileRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
-        UserProfile result = UserProfileService.createProfileForUser(user, null);
+        UserProfile result = userProfileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
     }
