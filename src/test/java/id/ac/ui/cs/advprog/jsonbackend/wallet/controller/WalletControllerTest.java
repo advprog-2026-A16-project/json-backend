@@ -38,9 +38,6 @@ class WalletControllerTest {
         userId = UUID.randomUUID();
     }
 
-    // =========================
-    // TEST TOP UP
-    // =========================
     @Test
     void testTopUpSuccess() {
 
@@ -61,9 +58,6 @@ class WalletControllerTest {
         verify(walletService, times(1)).topUp(request);
     }
 
-    // =========================
-    // TEST WITHDRAW
-    // =========================
     @Test
     void testWithdrawSuccess() {
 
@@ -84,9 +78,6 @@ class WalletControllerTest {
         verify(walletService, times(1)).withdraw(request);
     }
 
-    // =========================
-    // TEST SERVICE EXCEPTION
-    // =========================
     @Test
     void testWithdrawThrowsException() {
 
