@@ -47,6 +47,6 @@ public class UserProfileServiceImplTest {
         UserProfile updated = userProfileService.updateProfile(userId, "new_username", "Leon Kennedy");
 
         assertEquals("new_username", updated.getUsername());
-        assertEquals("Joko Wito", updated.getFullName());
+        assertEquals("Leon Kennedy", updated.getFullName());
     }
 }
