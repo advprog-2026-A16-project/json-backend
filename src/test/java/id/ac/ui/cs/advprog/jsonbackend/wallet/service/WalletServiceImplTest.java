@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -44,9 +45,6 @@ public class WalletServiceImplTest {
         wallet.credit(new BigDecimal("100000"));
     }
 
-    // ======================
-    // TEST TOP UP
-    // ======================
     @Test
     void testTopUpSuccess() {
 
@@ -65,9 +63,6 @@ public class WalletServiceImplTest {
         verify(transactionRepository, times(1)).save(any());
     }
 
-    // ======================
-    // TEST WITHDRAW SUCCESS
-    // ======================
     @Test
     void testWithdrawSuccess() {
 
@@ -86,9 +81,6 @@ public class WalletServiceImplTest {
         verify(transactionRepository, times(1)).save(any());
     }
 
-    // ======================
-    // TEST WITHDRAW FAILED
-    // ======================
     @Test
     void testWithdrawInsufficientBalance() {
 
@@ -102,5 +94,36 @@ public class WalletServiceImplTest {
         assertThrows(RuntimeException.class, () -> walletService.withdraw(request));
 
         verify(walletRepository, never()).save(wallet);
+    }
+
+    @Test
+    void testPaymentSuccess() {
+        PaymentRequest request = new PaymentRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("50000"));
+
+        when(walletRepository.findByUserId(userId))
+                .thenReturn(Optional.of(wallet));
+
+        WalletResponse response = walletService.payment(request);
+
+        assertEquals(new BigDecimal("50000"), response.getBalance());
+
+        verify(walletRepository, times(1)).save(wallet);
+        verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    void testPaymentInsufficientBalance() {
+        PaymentRequest request = new PaymentRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("150000"));
+
+        when(walletRepository.findByUserId(userId))
+                .thenReturn(Optional.of(wallet));
+
+        assertThrows(InsufficientBalanceException.class, () -> walletService.payment(request));
+
+        verify(walletRepository, never()).save(any());
     }
 }
