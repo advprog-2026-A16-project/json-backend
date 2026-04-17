@@ -79,4 +79,11 @@ public class WalletServiceImpl implements WalletService {
 
         return new WalletResponse(wallet.getUserId(), wallet.getBalance());
     }
+
+    @Override
+    @Transactional
+    public WalletResponse refund(RefundRequest request) {
+        // TODO: Implement logic refund
+        throw new UnsupportedOperationException("Belum diimplementasikan");
+    }
 }

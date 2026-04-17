@@ -127,4 +127,21 @@ public class WalletServiceImplTest {
 
         verify(walletRepository, never()).save(any());
     }
+
+    @Test
+    void testRefundSuccess() {
+        RefundRequest request = new RefundRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("50000"));
+
+        when(walletRepository.findByUserId(userId))
+                .thenReturn(Optional.of(wallet));
+
+        WalletResponse response = walletService.refund(request);
+
+        assertEquals(new BigDecimal("150000"), response.getBalance());
+
+        verify(walletRepository, times(1)).save(wallet);
+        verify(transactionRepository, times(1)).save(any());
+    }
 }

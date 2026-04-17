@@ -4,4 +4,5 @@ public enum TransactionType {
     TOP_UP,
     WITHDRAWAL,
     PAYMENT,
+    REFUND,
 }
