@@ -10,6 +10,7 @@ import lombok.*;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @Entity
 @Table(name = "wallets")
 public class Wallet {
@@ -23,6 +24,9 @@ public class Wallet {
 
     @Column(nullable = false)
     private BigDecimal balance = BigDecimal.ZERO;
+
+    @Version
+    private Long version;
 
     public void credit(BigDecimal amount) {
         balance = balance.add(amount);
