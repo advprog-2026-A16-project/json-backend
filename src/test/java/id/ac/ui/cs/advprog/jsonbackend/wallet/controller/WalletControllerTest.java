@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -10,8 +11,12 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.TopUpRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WithdrawRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WalletResponse;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -97,5 +102,21 @@ class WalletControllerTest {
         });
 
         verify(walletService, times(1)).withdraw(request);
+    }
+
+    @Test
+    void testHandleRaceCondition() {
+        ObjectOptimisticLockingFailureException exception =
+                new ObjectOptimisticLockingFailureException(Wallet.class.getName(), "versi_konflik");
+
+        ResponseEntity<Map<String, String>> response = walletController.handleRaceCondition(exception);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+
+        Map<String, String> body = response.getBody();
+        assertNotNull(body);
+        assertEquals("Sistem Sedang Sibuk", body.get("error"));
+        assertTrue(body.get("message").contains("antrean transaksimu tabrakan"));
     }
 }
