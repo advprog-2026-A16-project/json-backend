@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -129,6 +130,21 @@ class WalletControllerTest {
         assertEquals(new BigDecimal("150000"), response.getBalance());
 
         verify(walletService, times(1)).refund(request);
+    }
+
+    @Test
+    void testHandleInsufficientBalance() {
+        InsufficientBalanceException exception = new InsufficientBalanceException();
+
+        ResponseEntity<Map<String, String>> response = walletController.handleInsufficientBalance(exception);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        Map<String, String> body = response.getBody();
+        assertNotNull(body);
+        assertEquals("Saldo tidak mencukupi", body.get("error"));
+        assertTrue(body.get("message").contains("Yuk top-up dulu"));
     }
 
     @Test

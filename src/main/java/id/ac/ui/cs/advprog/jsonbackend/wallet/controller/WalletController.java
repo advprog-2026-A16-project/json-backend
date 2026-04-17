@@ -1,9 +1,13 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wallet")
@@ -33,6 +37,11 @@ public class WalletController {
     @PostMapping("/refund")
     public WalletResponse refund(@RequestBody RefundRequest request){
         return walletService.refund(request);
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientBalance(InsufficientBalanceException e) {
+        throw new UnsupportedOperationException("Belum diimplementasikan");
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
