@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +94,25 @@ class WalletControllerTest {
         });
 
         verify(walletService, times(1)).withdraw(request);
+    }
+
+    @Test
+    void testPaymentSuccess() {
+        PaymentRequest request = new PaymentRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("50000"));
+
+        WalletResponse mockResponse =
+                new WalletResponse(userId, new BigDecimal("50000"));
+
+        when(walletService.payment(request)).thenReturn(mockResponse);
+
+        WalletResponse response = walletController.payment(request);
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("50000"), response.getBalance());
+
+        verify(walletService, times(1)).payment(request);
     }
 
     @Test
