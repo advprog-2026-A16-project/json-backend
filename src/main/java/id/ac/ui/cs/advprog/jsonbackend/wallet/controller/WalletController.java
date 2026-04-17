@@ -4,9 +4,11 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -41,7 +43,10 @@ public class WalletController {
 
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<Map<String, String>> handleInsufficientBalance(InsufficientBalanceException e) {
-        throw new UnsupportedOperationException("Belum diimplementasikan");
+        Map<String, String> response = new HashMap<>();
+        response.put("error", "Saldo tidak mencukupi");
+        response.put("message", "Waduh, saldo kamu nggak cukup nih. Yuk top-up dulu biar bisa lanjut war!");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
