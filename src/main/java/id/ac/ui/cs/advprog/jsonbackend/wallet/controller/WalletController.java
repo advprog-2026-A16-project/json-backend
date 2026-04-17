@@ -24,4 +24,15 @@ public class WalletController {
     public WalletResponse withdraw(@RequestBody WithdrawRequest request){
         return walletService.withdraw(request);
     }
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public org.springframework.http.ResponseEntity<java.util.Map<String, String>> handleRaceCondition(
+            org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("error", "Sistem Sedang Sibuk");
+        response.put("message", "Wah, antrean transaksimu tabrakan nih. Coba klik bayar sekali lagi ya!");
+
+        return new org.springframework.http.ResponseEntity<>(response, org.springframework.http.HttpStatus.CONFLICT);
+    }
 }
