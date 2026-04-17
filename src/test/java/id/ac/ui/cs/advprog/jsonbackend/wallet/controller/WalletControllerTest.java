@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,9 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.TopUpRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WithdrawRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WalletResponse;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -113,6 +110,25 @@ class WalletControllerTest {
         assertEquals(new BigDecimal("50000"), response.getBalance());
 
         verify(walletService, times(1)).payment(request);
+    }
+
+    @Test
+    void testRefundSuccess() {
+        RefundRequest request = new RefundRequest();
+        request.setUserId(userId);
+        request.setAmount(new BigDecimal("50000"));
+
+        WalletResponse mockResponse =
+                new WalletResponse(userId, new BigDecimal("150000"));
+
+        when(walletService.refund(request)).thenReturn(mockResponse);
+
+        WalletResponse response = walletController.refund(request);
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("150000"), response.getBalance());
+
+        verify(walletService, times(1)).refund(request);
     }
 
     @Test

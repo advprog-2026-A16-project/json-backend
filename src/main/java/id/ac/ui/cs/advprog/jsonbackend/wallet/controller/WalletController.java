@@ -30,6 +30,11 @@ public class WalletController {
         return walletService.payment(request);
     }
 
+    @PostMapping("/refund")
+    public WalletResponse refund(@RequestBody RefundRequest request){
+        throw new UnsupportedOperationException("Belum diimplementasikan");
+    }
+
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
     public org.springframework.http.ResponseEntity<java.util.Map<String, String>> handleRaceCondition(
             org.springframework.orm.ObjectOptimisticLockingFailureException e) {
