@@ -25,6 +25,11 @@ public class WalletController {
         return walletService.withdraw(request);
     }
 
+    @PostMapping("/payment")
+    public WalletResponse payment(@RequestBody PaymentRequest request){
+        throw new UnsupportedOperationException("Belum diimplementasikan");
+    }
+
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
     public org.springframework.http.ResponseEntity<java.util.Map<String, String>> handleRaceCondition(
             org.springframework.orm.ObjectOptimisticLockingFailureException e) {
