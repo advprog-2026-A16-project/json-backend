@@ -28,7 +28,6 @@ public class UserProfile {
     private String username;
 
     private String fullName;
-    private String avatarUrl;
 
     @Builder.Default
     private int successfulTransaction = 0;
