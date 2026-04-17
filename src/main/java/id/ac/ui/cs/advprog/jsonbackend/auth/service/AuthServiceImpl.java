@@ -12,6 +12,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
@@ -44,6 +47,8 @@ public class AuthServiceImpl implements AuthService {
                 Role.TITIPERS
         );
         userRepository.save(user);
+
+        eventPublisher.publishEvent(new UserRegisteredEvent(user));
 
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponse(jwtToken, "Registration successful");
