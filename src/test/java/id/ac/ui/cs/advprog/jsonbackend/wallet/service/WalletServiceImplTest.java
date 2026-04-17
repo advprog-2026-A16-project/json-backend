@@ -1,15 +1,12 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.TopUpRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WithdrawRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.WalletResponse;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.WalletRepository;
