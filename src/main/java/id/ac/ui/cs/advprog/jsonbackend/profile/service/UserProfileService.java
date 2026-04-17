@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.profile.model.UserProfile;
 import java.util.UUID;
 
 public interface UserProfileService {
-    public UserProfile createProfileForUser(User user, String requestedUsername);
-    public UserProfile getProfileByUserId(UUID userId);
+    UserProfile createProfileForUser(User user, String requestedUsername);
+    UserProfile getProfileByUserId(UUID userId);
+    UserProfile updateProfile(UUID userId, String username, String fullName);
 }

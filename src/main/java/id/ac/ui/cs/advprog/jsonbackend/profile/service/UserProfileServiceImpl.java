@@ -12,7 +12,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserProfileServiceImpl implements UserProfileService {
-    private final UserProfileRepository profileRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Override
     public UserProfile createProfileForUser(User user, String requestedUsername) {
@@ -27,12 +27,26 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .username(finalUsername)
                 .build();
 
-        return profileRepository.save(profile);
+        return userProfileRepository.save(profile);
     }
 
     @Override
     public UserProfile getProfileByUserId(UUID userId) {
-        return profileRepository.findByUserId(userId)
+        return userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new UserProfileNotFoundException("Profile not found"));
+    }
+
+    @Override
+    public UserProfile updateProfile(UUID userId, String username, String fullName) {
+        UserProfile profile = getProfileByUserId(userId);
+
+        if (username != null && !username.trim().isEmpty()) {
+            profile.setUsername(username.trim());
+        }
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            profile.setFullName(fullName.trim());
+        }
+
+        return userProfileRepository.save(profile);
     }
 }
