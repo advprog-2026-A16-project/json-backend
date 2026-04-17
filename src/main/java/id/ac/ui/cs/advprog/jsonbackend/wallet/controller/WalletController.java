@@ -32,7 +32,7 @@ public class WalletController {
 
     @PostMapping("/refund")
     public WalletResponse refund(@RequestBody RefundRequest request){
-        throw new UnsupportedOperationException("Belum diimplementasikan");
+        return walletService.refund(request);
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
