@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

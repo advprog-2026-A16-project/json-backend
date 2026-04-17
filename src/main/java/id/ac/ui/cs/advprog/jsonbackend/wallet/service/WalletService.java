@@ -9,4 +9,5 @@ public interface WalletService {
 
     WalletResponse withdraw(WithdrawRequest request);
 
+    WalletResponse payment(PaymentRequest request);
 }
