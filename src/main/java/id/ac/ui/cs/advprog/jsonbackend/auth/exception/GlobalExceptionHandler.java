@@ -59,4 +59,11 @@ public class GlobalExceptionHandler {
                 .status(500)
                 .body(Map.of("message", "An internal server error occurred"));
     }
+
+    @ExceptionHandler(AccountBannedException.class)
+    public ResponseEntity<Map<String, String>> handleAccountBannedException(AccountBannedException ex) {
+        return ResponseEntity
+                .status(403)
+                .body(Map.of("message", ex.getMessage()));
+    }
 }

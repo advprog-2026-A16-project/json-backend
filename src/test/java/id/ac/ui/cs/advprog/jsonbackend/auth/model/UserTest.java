@@ -1,11 +1,15 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.model;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 class UserTest {
 
@@ -54,5 +58,51 @@ class UserTest {
         assertThat(user.getEmail()).isEqualTo("new@email.com");
         assertThat(user.getPassword()).isEqualTo("newpass");
         assertThat(user.getRole()).isEqualTo(Role.TITIPERS);
+    }
+
+    @Test
+    void testUserHasDefaultActiveAccountStatus() {
+        User newUser = new User("new@email.com", "password", Role.TITIPERS);
+
+        assertEquals(AccountStatus.ACTIVE, newUser.getAccountStatus());
+        assertTrue(newUser.isEnabled());
+    }
+
+    @Test
+    void testUserBannedStatus() {
+        User bannedUser = new User("new@email.com", "password", Role.TITIPERS);
+        bannedUser.setAccountStatus(AccountStatus.BANNED);
+
+        assertEquals(AccountStatus.BANNED, bannedUser.getAccountStatus());
+        assertFalse(bannedUser.isEnabled());
+    }
+
+
+    @Test
+    void testUserTimestampsArePopulatedOnCreation() {
+        User user = new User("new@email.com", "password", Role.TITIPERS);
+        user.onCreate();
+        assertNotNull(user.getCreatedAt());
+    }
+
+    @Test
+    void testManualLifecycleCallbacks() throws InterruptedException {
+        User user = new User();
+
+         assertNull(user.getCreatedAt());
+        user.onCreate();
+
+        LocalDateTime createdTime = user.getCreatedAt();
+        LocalDateTime updatedTime = user.getUpdatedAt();
+
+        assertNotNull(createdTime);
+        assertNotNull(updatedTime);
+        assertEquals(createdTime, updatedTime);
+
+         Thread.sleep(10);
+
+        user.onUpdate();
+
+        assertTrue(user.getUpdatedAt().isAfter(createdTime));
     }
 }

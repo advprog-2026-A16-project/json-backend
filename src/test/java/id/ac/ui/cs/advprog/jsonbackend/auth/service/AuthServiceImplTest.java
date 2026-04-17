@@ -3,7 +3,11 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,6 +41,8 @@ class AuthServiceImplTest {
     private JwtService jwtService;
     @Mock
     private AuthenticationManager authenticationManager;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -64,9 +71,7 @@ class AuthServiceImplTest {
     @Test
     void registerThrowsExceptionWhenPasswordMismatch() {
         RegisterRequest request = new RegisterRequest("test@example.com", "password", "wrong");
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> authService.register(request));
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertThrows(PasswordMismatchException.class, () -> authService.register(request));
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -74,9 +79,7 @@ class AuthServiceImplTest {
     void registerThrowsExceptionWhenEmailAlreadyExists() {
         RegisterRequest request = new RegisterRequest("test@example.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(user));
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> authService.register(request));
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(request));
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -103,5 +106,22 @@ class AuthServiceImplTest {
         assertNotNull(response);
         assertEquals("jwt-token", response.token());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+    }
+
+    @Test
+    void whenLoginWithBannedAccount_thenThrowAccountBannedException() {
+        LoginRequest request = new LoginRequest("banned@email.com", "password");
+        User bannedUser = User.builder()
+                .email("banned@email.com")
+                .password("encoded_password")
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.BANNED)
+                .build();
+
+        when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(bannedUser));
+
+        assertThrows(AccountBannedException.class, () -> authService.login(request));
+
+        verify(jwtService, never()).generateToken(any(User.class));
     }
 }

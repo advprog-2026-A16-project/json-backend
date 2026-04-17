@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;

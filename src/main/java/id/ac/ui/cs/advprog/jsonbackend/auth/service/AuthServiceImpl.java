@@ -4,18 +4,20 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import org.springframework.http.HttpStatus;
+import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -24,15 +26,18 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
-                           AuthenticationManager authenticationManager) {
+                           AuthenticationManager authenticationManager,
+                           ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.eventPublisher = eventPublisher;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -45,17 +50,24 @@ public class AuthServiceImpl implements AuthService {
         );
         userRepository.save(user);
 
+        eventPublisher.publishEvent(new UserRegisteredEvent(user));
+
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponse(jwtToken, "Registration successful");
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(UserNotFoundException::new);
+
+        if (user.getAccountStatus() == AccountStatus.BANNED) {
+            throw new AccountBannedException("Your account has been banned.");
+        }
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+        );
 
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponse(jwtToken, "Login successful");
