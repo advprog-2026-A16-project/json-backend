@@ -9,6 +9,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,5 +34,19 @@ public class UserProfileServiceImplTest {
         UserProfile result = userProfileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
+    }
+
+    @Test
+    void updateProfile_ShouldUpdateFields_WhenValidDataProvided() {
+        UUID userId = UUID.randomUUID();
+        UserProfile existing = UserProfile.builder().username("old").build();
+
+        when(userProfileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+        when(userProfileRepository.save(any(UserProfile.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        UserProfile updated = userProfileService.updateProfile(userId, "new_username", "Leon Kennedy");
+
+        assertEquals("new_username", updated.getUsername());
+        assertEquals("Joko Wito", updated.getFullName());
     }
 }
