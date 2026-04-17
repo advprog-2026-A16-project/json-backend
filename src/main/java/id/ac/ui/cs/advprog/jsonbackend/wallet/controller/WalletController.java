@@ -52,7 +52,10 @@ public class WalletController {
 
     @ExceptionHandler(WalletNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleWalletNotFound(WalletNotFoundException e) {
-        throw new UnsupportedOperationException("belum diimplementasikan");
+        Map<String, String> response = new HashMap<>();
+        response.put("error", "Wallet tidak ditemukan");
+        response.put("message", "Dompet digital kamu belum aktif atau tidak ditemukan.");
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
