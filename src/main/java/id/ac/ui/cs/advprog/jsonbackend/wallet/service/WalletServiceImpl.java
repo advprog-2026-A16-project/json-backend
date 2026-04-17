@@ -66,7 +66,17 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse payment(PaymentRequest request) {
-        // TODO: Implement logic payment
-        throw new UnsupportedOperationException("Belum diimplementasikan");
+        Wallet wallet = getWallet(request.getUserId());
+
+        wallet.debit(request.getAmount());
+        walletRepository.save(wallet);
+
+        Transaction trx = new Transaction();
+        trx.setUserId(request.getUserId());
+        trx.setAmount(request.getAmount());
+        trx.setType(TransactionType.PAYMENT);
+        transactionRepository.save(trx);
+
+        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
     }
 }
