@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.jsonbackend.profile.model;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UserProfileTest {
@@ -15,8 +17,18 @@ public class UserProfileTest {
                 .fullName("Test User")
                 .build();
 
+        profile.onCreate();
+
         assertEquals("testuser", profile.getUsername());
         assertEquals(0, profile.getSuccessfulTransaction());
         assertEquals(0.0, profile.getRating());
+
+        profile.onUpdate();
+
+        assertEquals(LocalDateTime.now(), profile.getUpdatedAt());
+
+
+
+
     }
 }
