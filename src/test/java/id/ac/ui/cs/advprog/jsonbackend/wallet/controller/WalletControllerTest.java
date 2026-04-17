@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -145,6 +146,21 @@ class WalletControllerTest {
         assertNotNull(body);
         assertEquals("Saldo tidak mencukupi", body.get("error"));
         assertTrue(body.get("message").contains("Yuk top-up dulu"));
+    }
+
+    @Test
+    void testHandleWalletNotFound() {
+        WalletNotFoundException exception = new WalletNotFoundException();
+
+        ResponseEntity<Map<String, String>> response = walletController.handleWalletNotFound(exception);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+
+        Map<String, String> body = response.getBody();
+        assertNotNull(body);
+        assertEquals("Wallet tidak ditemukan", body.get("error"));
+        assertTrue(body.get("message").contains("belum aktif atau tidak ditemukan"));
     }
 
     @Test

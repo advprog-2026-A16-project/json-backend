@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,11 @@ public class WalletController {
         response.put("error", "Saldo tidak mencukupi");
         response.put("message", "Waduh, saldo kamu nggak cukup nih. Yuk top-up dulu biar bisa lanjut war!");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(WalletNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleWalletNotFound(WalletNotFoundException e) {
+        throw new UnsupportedOperationException("belum diimplementasikan");
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
