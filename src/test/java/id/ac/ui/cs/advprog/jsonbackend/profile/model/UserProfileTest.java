@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UserProfileTest {
@@ -25,7 +26,7 @@ public class UserProfileTest {
 
         profile.onUpdate();
 
-        assertEquals(LocalDateTime.now(), profile.getUpdatedAt());
+        assertThat(profile.getUpdatedAt()).isBeforeOrEqualTo(LocalDateTime.now());
 
 
 
