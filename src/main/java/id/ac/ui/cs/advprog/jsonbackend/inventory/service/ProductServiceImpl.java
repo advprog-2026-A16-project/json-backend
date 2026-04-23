@@ -2,6 +2,9 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
@@ -19,10 +22,14 @@ import java.util.UUID;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryOutboxEventRepository outboxEventRepository;
     private final ProductMapper productMapper;
 
-    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper) {
+    public ProductServiceImpl(ProductRepository productRepository,
+                              InventoryOutboxEventRepository outboxEventRepository,
+                              ProductMapper productMapper) {
         this.productRepository = productRepository;
+        this.outboxEventRepository = outboxEventRepository;
         this.productMapper = productMapper;
     }
 
@@ -73,6 +80,22 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
         existing.reduceStock(quantity);
         productRepository.save(existing);
+        appendOutboxEvent(InventoryEventType.STOCK_RESERVED, productId, quantity);
+    }
+
+    @Override
+    public void releaseStock(UUID productId, int quantity) {
+        if (productId == null) {
+            throw new InvalidProductException("Product id is required");
+        }
+        if (quantity <= 0) {
+            throw new InvalidProductException("Quantity must be greater than zero");
+        }
+        Product existing = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+        existing.increaseStock(quantity);
+        productRepository.save(existing);
+        appendOutboxEvent(InventoryEventType.STOCK_RELEASED, productId, quantity);
     }
 
     @Override
@@ -126,5 +149,15 @@ public class ProductServiceImpl implements ProductService {
         if (request.getStock() == null || request.getStock() < 0) {
             throw new InvalidProductException("Stock cannot be negative");
         }
+    }
+
+    private void appendOutboxEvent(InventoryEventType eventType, UUID productId, int quantity) {
+        InventoryOutboxEvent outboxEvent = InventoryOutboxEvent.builder()
+                .eventType(eventType)
+                .aggregateId(productId)
+                .payload("{\"productId\":\"" + productId + "\",\"quantity\":" + quantity + "}")
+                .correlationId(UUID.randomUUID().toString())
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 }

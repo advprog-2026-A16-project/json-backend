@@ -15,6 +15,8 @@ public interface ProductService {
 
     void reserveStock(UUID productId, int quantity);
 
+    void releaseStock(UUID productId, int quantity);
+
     ProductResponse findById(UUID id);
 
     ProductResponse create(ProductRequest request);
