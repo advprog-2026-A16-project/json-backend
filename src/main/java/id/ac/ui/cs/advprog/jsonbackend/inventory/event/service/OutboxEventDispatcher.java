@@ -47,6 +47,14 @@ public class OutboxEventDispatcher {
 
     @Transactional
     public void requeueFailedEvents() {
-        // RED phase skeleton: implementation will be added in GREEN step.
+        List<InventoryOutboxEvent> failedEvents =
+                outboxEventRepository.findTop50ByStatusOrderByOccurredAtAsc(OutboxEventStatus.FAILED);
+
+        for (InventoryOutboxEvent event : failedEvents) {
+            if (event.getRetryCount() < MAX_RETRY) {
+                event.setStatus(OutboxEventStatus.PENDING);
+                outboxEventRepository.save(event);
+            }
+        }
     }
 }
