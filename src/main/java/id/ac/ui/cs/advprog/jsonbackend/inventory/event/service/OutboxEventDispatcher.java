@@ -11,6 +11,7 @@ import java.util.List;
 
 @Component
 public class OutboxEventDispatcher {
+    private static final int MAX_RETRY = 3;
 
     private final InventoryOutboxEventRepository outboxEventRepository;
     private final InventoryEventPublisher eventPublisher;
@@ -32,8 +33,13 @@ public class OutboxEventDispatcher {
                 event.setStatus(OutboxEventStatus.SENT);
                 event.setSentAt(LocalDateTime.now());
             } catch (Exception ex) {
-                event.setStatus(OutboxEventStatus.FAILED);
-                event.setRetryCount(event.getRetryCount() + 1);
+                int nextRetry = event.getRetryCount() + 1;
+                event.setRetryCount(nextRetry);
+                if (nextRetry >= MAX_RETRY) {
+                    event.setStatus(OutboxEventStatus.DEAD_LETTER);
+                } else {
+                    event.setStatus(OutboxEventStatus.FAILED);
+                }
             }
             outboxEventRepository.save(event);
         }
