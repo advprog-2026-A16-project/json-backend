@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventPayloadFactory;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
@@ -155,7 +156,7 @@ public class ProductServiceImpl implements ProductService {
         InventoryOutboxEvent outboxEvent = InventoryOutboxEvent.builder()
                 .eventType(eventType)
                 .aggregateId(productId)
-                .payload("{\"productId\":\"" + productId + "\",\"quantity\":" + quantity + "}")
+                .payload(InventoryEventPayloadFactory.stockMutationPayload(productId, quantity))
                 .correlationId(UUID.randomUUID().toString())
                 .build();
         outboxEventRepository.save(outboxEvent);
