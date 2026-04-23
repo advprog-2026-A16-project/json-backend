@@ -56,6 +56,9 @@ class StockReservationRequestedEventHandlerTest {
         UUID productId = UUID.randomUUID();
         StockReservationRequestedEvent event = new StockReservationRequestedEvent(eventId, productId, 1, "corr-2");
 
+        when(processedEventRepository.existsByEventIdAndHandlerName(eventId, "StockReservationRequestedEventHandler"))
+                .thenReturn(true);
+
         handler.handle(event);
 
         verify(processedEventRepository, times(1))

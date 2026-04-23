@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReservationRequestedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.ProcessedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.ProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,18 @@ public class StockReservationRequestedEventHandler {
 
     @Transactional
     public void handle(StockReservationRequestedEvent event) {
-        // RED phase skeleton: implementation will be added in GREEN step.
+        String handlerName = "StockReservationRequestedEventHandler";
+        boolean alreadyProcessed =
+                processedEventRepository.existsByEventIdAndHandlerName(event.eventId(), handlerName);
+
+        if (alreadyProcessed) {
+            return;
+        }
+
+        productService.reserveStock(event.productId(), event.quantity());
+        processedEventRepository.save(ProcessedEvent.builder()
+                .eventId(event.eventId())
+                .handlerName(handlerName)
+                .build());
     }
 }
