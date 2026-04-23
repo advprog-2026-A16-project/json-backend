@@ -62,6 +62,22 @@ class OutboxEventDispatcherTest {
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
+    @Test
+    void dispatchPendingEventsShouldMoveToDeadLetterWhenRetryLimitReached() {
+        InventoryOutboxEvent pending = pendingEvent();
+        pending.setRetryCount(2);
+        when(outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxEventStatus.PENDING))
+                .thenReturn(List.of(pending));
+        doThrow(new RuntimeException("broker still down")).when(eventPublisher).publish(pending);
+
+        dispatcher.dispatchPendingEvents();
+
+        verify(eventPublisher, times(1)).publish(pending);
+        assertEquals(OutboxEventStatus.DEAD_LETTER, pending.getStatus());
+        assertEquals(3, pending.getRetryCount());
+        verify(outboxEventRepository, times(1)).save(pending);
+    }
+
     private InventoryOutboxEvent pendingEvent() {
         return InventoryOutboxEvent.builder()
                 .id(UUID.randomUUID())
