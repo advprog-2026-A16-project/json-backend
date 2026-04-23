@@ -14,6 +14,7 @@ public class OutboxEventScheduler {
 
     @Scheduled(fixedDelayString = "${inventory.outbox.dispatch.delay-ms:3000}")
     public void runDispatchCycle() {
-        // RED phase skeleton: implementation will be added in GREEN step.
+        dispatcher.dispatchPendingEvents();
+        dispatcher.requeueFailedEvents();
     }
 }
