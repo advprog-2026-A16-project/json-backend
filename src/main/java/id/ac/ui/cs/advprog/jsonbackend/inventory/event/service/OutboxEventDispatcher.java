@@ -44,4 +44,9 @@ public class OutboxEventDispatcher {
             outboxEventRepository.save(event);
         }
     }
+
+    @Transactional
+    public void requeueFailedEvents() {
+        // RED phase skeleton: implementation will be added in GREEN step.
+    }
 }

@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface InventoryOutboxEventRepository extends JpaRepository<InventoryOutboxEvent, UUID> {
     List<InventoryOutboxEvent> findTop50ByStatusOrderByCreatedAtAsc(OutboxEventStatus status);
+
+    List<InventoryOutboxEvent> findTop50ByStatusOrderByOccurredAtAsc(OutboxEventStatus status);
 }
