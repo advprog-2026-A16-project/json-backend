@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.event.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.NonRetryableInventoryEventException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.OutboxEventStatus;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
@@ -32,6 +33,8 @@ public class OutboxEventDispatcher {
                 eventPublisher.publish(event);
                 event.setStatus(OutboxEventStatus.SENT);
                 event.setSentAt(LocalDateTime.now());
+            } catch (NonRetryableInventoryEventException ex) {
+                event.setStatus(OutboxEventStatus.DEAD_LETTER);
             } catch (Exception ex) {
                 int nextRetry = event.getRetryCount() + 1;
                 event.setRetryCount(nextRetry);

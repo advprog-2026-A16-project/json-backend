@@ -117,7 +117,7 @@ class InventoryEventFlowIntegrationTest {
     }
 
     @Test
-    void dispatchPendingEventsShouldMarkUnsupportedEventTypeAsFailed() {
+    void dispatchPendingEventsShouldMoveUnsupportedEventTypeToDeadLetter() {
         Product product = Product.builder()
                 .name("Flow Unsupported")
                 .description("Flow unsupported desc")
@@ -147,7 +147,7 @@ class InventoryEventFlowIntegrationTest {
         assertEquals(3, updated.getStock());
 
         InventoryOutboxEvent updatedOutbox = outboxEventRepository.findById(savedEvent.getId()).orElseThrow();
-        assertEquals(OutboxEventStatus.FAILED, updatedOutbox.getStatus());
-        assertEquals(1, updatedOutbox.getRetryCount());
+        assertEquals(OutboxEventStatus.DEAD_LETTER, updatedOutbox.getStatus());
+        assertEquals(0, updatedOutbox.getRetryCount());
     }
 }

@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.event.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.NonRetryableInventoryEventException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReleaseRequestedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReservationRequestedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.handler.StockReleaseRequestedEventHandler;
@@ -53,7 +54,7 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
                         )
                 );
             }
-            default -> throw new IllegalArgumentException(
+            default -> throw new NonRetryableInventoryEventException(
                     "Unsupported inventory event type: " + event.getEventType()
             );
         }
@@ -63,7 +64,7 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
         try {
             return new EventPayload(extractProductId(payload), extractQuantity(payload));
         } catch (Exception ex) {
-            throw new IllegalArgumentException("Invalid inventory event payload", ex);
+            throw new NonRetryableInventoryEventException("Invalid inventory event payload", ex);
         }
     }
 
