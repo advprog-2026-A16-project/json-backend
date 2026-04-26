@@ -64,6 +64,9 @@ public class InventoryOutboxEvent {
 
     private LocalDateTime sentAt;
 
+    @Column(columnDefinition = "TEXT")
+    private String failureReason;
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();

@@ -37,6 +37,7 @@ class OutboxEventDispatcherTest {
     @Test
     void dispatchPendingEventsShouldMarkEventAsSentWhenPublishSuccess() {
         InventoryOutboxEvent pending = pendingEvent();
+        pending.setFailureReason("old failure");
         when(outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxEventStatus.PENDING))
                 .thenReturn(List.of(pending));
 
@@ -45,6 +46,7 @@ class OutboxEventDispatcherTest {
         verify(eventPublisher, times(1)).publish(pending);
         assertEquals(OutboxEventStatus.SENT, pending.getStatus());
         assertNotNull(pending.getSentAt());
+        assertEquals(null, pending.getFailureReason());
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
@@ -60,6 +62,7 @@ class OutboxEventDispatcherTest {
         verify(eventPublisher, times(1)).publish(pending);
         assertEquals(OutboxEventStatus.FAILED, pending.getStatus());
         assertEquals(1, pending.getRetryCount());
+        assertEquals("broker error", pending.getFailureReason());
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
@@ -92,6 +95,7 @@ class OutboxEventDispatcherTest {
         verify(eventPublisher, times(1)).publish(pending);
         assertEquals(OutboxEventStatus.DEAD_LETTER, pending.getStatus());
         assertEquals(0, pending.getRetryCount());
+        assertEquals("unsupported event type", pending.getFailureReason());
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
