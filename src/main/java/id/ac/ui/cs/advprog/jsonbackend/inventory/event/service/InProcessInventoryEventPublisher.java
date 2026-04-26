@@ -30,32 +30,38 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
 
     @Override
     public void publish(InventoryOutboxEvent event) {
-        try {
-            UUID productId = extractProductId(event.getPayload());
-            int quantity = extractQuantity(event.getPayload());
-
-            if (event.getEventType() == InventoryEventType.STOCK_RESERVED) {
+        switch (event.getEventType()) {
+            case STOCK_RESERVED -> {
+                EventPayload payload = parsePayload(event.getPayload());
                 stockReservationRequestedEventHandler.handle(
                         new StockReservationRequestedEvent(
                                 event.getEventId(),
-                                productId,
-                                quantity,
+                                payload.productId(),
+                                payload.quantity(),
                                 event.getCorrelationId()
                         )
                 );
-                return;
             }
-
-            if (event.getEventType() == InventoryEventType.STOCK_RELEASED) {
+            case STOCK_RELEASED -> {
+                EventPayload payload = parsePayload(event.getPayload());
                 stockReleaseRequestedEventHandler.handle(
                         new StockReleaseRequestedEvent(
                                 event.getEventId(),
-                                productId,
-                                quantity,
+                                payload.productId(),
+                                payload.quantity(),
                                 event.getCorrelationId()
                         )
                 );
             }
+            default -> {
+                // No in-process handler for this event type yet.
+            }
+        }
+    }
+
+    private EventPayload parsePayload(String payload) {
+        try {
+            return new EventPayload(extractProductId(payload), extractQuantity(payload));
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid inventory event payload", ex);
         }
@@ -75,5 +81,8 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
             throw new IllegalArgumentException("Missing quantity");
         }
         return Integer.parseInt(matcher.group(1));
+    }
+
+    private record EventPayload(UUID productId, int quantity) {
     }
 }
