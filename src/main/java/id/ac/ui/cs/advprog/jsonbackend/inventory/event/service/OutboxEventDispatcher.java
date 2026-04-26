@@ -54,6 +54,7 @@ public class OutboxEventDispatcher {
                 markAsDeadLetter(event);
             } else {
                 event.setStatus(OutboxEventStatus.PENDING);
+                event.setFailureReason(null);
             }
             outboxEventRepository.save(event);
         }
