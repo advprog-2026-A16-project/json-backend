@@ -13,6 +13,7 @@ import java.util.List;
 @Component
 public class OutboxEventDispatcher {
     private static final int MAX_RETRY = 3;
+    private static final int MAX_FAILURE_REASON_LENGTH = 500;
 
     private final InventoryOutboxEventRepository outboxEventRepository;
     private final InventoryEventPublisher eventPublisher;
@@ -83,6 +84,15 @@ public class OutboxEventDispatcher {
     }
 
     private void setFailureReason(InventoryOutboxEvent event, Exception ex) {
-        event.setFailureReason(ex.getMessage());
+        String message = ex.getMessage();
+        if (message == null) {
+            event.setFailureReason("Unknown failure");
+            return;
+        }
+        if (message.length() > MAX_FAILURE_REASON_LENGTH) {
+            event.setFailureReason(message.substring(0, MAX_FAILURE_REASON_LENGTH));
+            return;
+        }
+        event.setFailureReason(message);
     }
 }
