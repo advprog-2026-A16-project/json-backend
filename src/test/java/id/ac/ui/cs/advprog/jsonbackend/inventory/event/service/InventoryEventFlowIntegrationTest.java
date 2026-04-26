@@ -115,4 +115,39 @@ class InventoryEventFlowIntegrationTest {
         assertTrue(processedEventRepository
                 .existsByEventIdAndHandlerName(eventId, "StockReleaseRequestedEventHandler"));
     }
+
+    @Test
+    void dispatchPendingEventsShouldMarkUnsupportedEventTypeAsFailed() {
+        Product product = Product.builder()
+                .name("Flow Unsupported")
+                .description("Flow unsupported desc")
+                .price(new BigDecimal("100000"))
+                .stock(3)
+                .originCountry("JP")
+                .purchaseDate(LocalDate.now().plusDays(1))
+                .jastiperId(UUID.randomUUID())
+                .build();
+        Product savedProduct = productRepository.save(product);
+
+        UUID eventId = UUID.randomUUID();
+        InventoryOutboxEvent outboxEvent = InventoryOutboxEvent.builder()
+                .eventId(eventId)
+                .eventType(InventoryEventType.STOCK_RESERVATION_FAILED)
+                .aggregateId(savedProduct.getId())
+                .payload(InventoryEventPayloadFactory.stockMutationPayload(savedProduct.getId(), 1))
+                .correlationId("corr-integration-unsupported-1")
+                .status(OutboxEventStatus.PENDING)
+                .retryCount(0)
+                .build();
+        InventoryOutboxEvent savedEvent = outboxEventRepository.save(outboxEvent);
+
+        dispatcher.dispatchPendingEvents();
+
+        Product updated = productRepository.findById(savedProduct.getId()).orElseThrow();
+        assertEquals(3, updated.getStock());
+
+        InventoryOutboxEvent updatedOutbox = outboxEventRepository.findById(savedEvent.getId()).orElseThrow();
+        assertEquals(OutboxEventStatus.FAILED, updatedOutbox.getStatus());
+        assertEquals(1, updatedOutbox.getRetryCount());
+    }
 }
