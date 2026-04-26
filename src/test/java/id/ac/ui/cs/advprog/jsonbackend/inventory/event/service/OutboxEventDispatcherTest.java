@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,7 +48,7 @@ class OutboxEventDispatcherTest {
         verify(eventPublisher, times(1)).publish(pending);
         assertEquals(OutboxEventStatus.SENT, pending.getStatus());
         assertNotNull(pending.getSentAt());
-        assertEquals(null, pending.getFailureReason());
+        assertNull(pending.getFailureReason());
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
@@ -127,7 +128,7 @@ class OutboxEventDispatcherTest {
         dispatcher.requeueFailedEvents();
 
         assertEquals(OutboxEventStatus.PENDING, failed.getStatus());
-        assertEquals(null, failed.getFailureReason());
+        assertNull(failed.getFailureReason());
         verify(outboxEventRepository, times(1)).save(failed);
     }
 
