@@ -79,4 +79,40 @@ class InventoryEventFlowIntegrationTest {
         assertTrue(processedEventRepository
                 .existsByEventIdAndHandlerName(eventId, "StockReservationRequestedEventHandler"));
     }
+
+    @Test
+    void dispatchPendingEventsShouldReleaseStockAndMarkProcessed() {
+        Product product = Product.builder()
+                .name("Flow Product Release")
+                .description("Flow release desc")
+                .price(new BigDecimal("100000"))
+                .stock(3)
+                .originCountry("JP")
+                .purchaseDate(LocalDate.now().plusDays(1))
+                .jastiperId(UUID.randomUUID())
+                .build();
+        Product savedProduct = productRepository.save(product);
+
+        UUID eventId = UUID.randomUUID();
+        InventoryOutboxEvent outboxEvent = InventoryOutboxEvent.builder()
+                .eventId(eventId)
+                .eventType(InventoryEventType.STOCK_RELEASED)
+                .aggregateId(savedProduct.getId())
+                .payload(InventoryEventPayloadFactory.stockMutationPayload(savedProduct.getId(), 2))
+                .correlationId("corr-integration-release-1")
+                .status(OutboxEventStatus.PENDING)
+                .retryCount(0)
+                .build();
+        InventoryOutboxEvent savedEvent = outboxEventRepository.save(outboxEvent);
+
+        dispatcher.dispatchPendingEvents();
+
+        Product updated = productRepository.findById(savedProduct.getId()).orElseThrow();
+        assertEquals(5, updated.getStock());
+
+        InventoryOutboxEvent updatedOutbox = outboxEventRepository.findById(savedEvent.getId()).orElseThrow();
+        assertEquals(OutboxEventStatus.SENT, updatedOutbox.getStatus());
+        assertTrue(processedEventRepository
+                .existsByEventIdAndHandlerName(eventId, "StockReleaseRequestedEventHandler"));
+    }
 }
