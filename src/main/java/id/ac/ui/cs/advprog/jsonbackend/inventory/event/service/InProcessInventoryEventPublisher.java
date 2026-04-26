@@ -53,9 +53,9 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
                         )
                 );
             }
-            default -> {
-                // No in-process handler for this event type yet.
-            }
+            default -> throw new IllegalArgumentException(
+                    "Unsupported inventory event type: " + event.getEventType()
+            );
         }
     }
 
