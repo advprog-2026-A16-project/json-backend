@@ -53,8 +53,10 @@ public class OutboxEventDispatcher {
         for (InventoryOutboxEvent event : failedEvents) {
             if (event.getRetryCount() < MAX_RETRY) {
                 event.setStatus(OutboxEventStatus.PENDING);
-                outboxEventRepository.save(event);
+            } else {
+                event.setStatus(OutboxEventStatus.DEAD_LETTER);
             }
+            outboxEventRepository.save(event);
         }
     }
 }
