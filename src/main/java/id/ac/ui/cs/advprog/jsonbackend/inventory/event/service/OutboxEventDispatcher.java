@@ -31,18 +31,11 @@ public class OutboxEventDispatcher {
         for (InventoryOutboxEvent event : pendingEvents) {
             try {
                 eventPublisher.publish(event);
-                event.setStatus(OutboxEventStatus.SENT);
-                event.setSentAt(LocalDateTime.now());
+                markAsSent(event);
             } catch (NonRetryableInventoryEventException ex) {
-                event.setStatus(OutboxEventStatus.DEAD_LETTER);
+                markAsDeadLetter(event);
             } catch (Exception ex) {
-                int nextRetry = event.getRetryCount() + 1;
-                event.setRetryCount(nextRetry);
-                if (nextRetry >= MAX_RETRY) {
-                    event.setStatus(OutboxEventStatus.DEAD_LETTER);
-                } else {
-                    event.setStatus(OutboxEventStatus.FAILED);
-                }
+                markRetryableFailure(event);
             }
             outboxEventRepository.save(event);
         }
@@ -54,12 +47,35 @@ public class OutboxEventDispatcher {
                 outboxEventRepository.findTop50ByStatusOrderByOccurredAtAsc(OutboxEventStatus.FAILED);
 
         for (InventoryOutboxEvent event : failedEvents) {
-            if (event.getRetryCount() < MAX_RETRY) {
-                event.setStatus(OutboxEventStatus.PENDING);
+            if (isRetryLimitReached(event)) {
+                markAsDeadLetter(event);
             } else {
-                event.setStatus(OutboxEventStatus.DEAD_LETTER);
+                event.setStatus(OutboxEventStatus.PENDING);
             }
             outboxEventRepository.save(event);
         }
+    }
+
+    private void markAsSent(InventoryOutboxEvent event) {
+        event.setStatus(OutboxEventStatus.SENT);
+        event.setSentAt(LocalDateTime.now());
+    }
+
+    private void markAsDeadLetter(InventoryOutboxEvent event) {
+        event.setStatus(OutboxEventStatus.DEAD_LETTER);
+    }
+
+    private void markRetryableFailure(InventoryOutboxEvent event) {
+        int nextRetry = event.getRetryCount() + 1;
+        event.setRetryCount(nextRetry);
+        if (nextRetry >= MAX_RETRY) {
+            markAsDeadLetter(event);
+        } else {
+            event.setStatus(OutboxEventStatus.FAILED);
+        }
+    }
+
+    private boolean isRetryLimitReached(InventoryOutboxEvent event) {
+        return event.getRetryCount() >= MAX_RETRY;
     }
 }
