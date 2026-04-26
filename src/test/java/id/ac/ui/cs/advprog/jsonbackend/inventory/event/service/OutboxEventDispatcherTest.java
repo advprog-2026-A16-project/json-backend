@@ -102,6 +102,21 @@ class OutboxEventDispatcherTest {
         verify(outboxEventRepository, times(0)).save(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    void requeueFailedEventsShouldMoveToDeadLetterWhenRetryLimitAlreadyReached() {
+        InventoryOutboxEvent failed = pendingEvent();
+        failed.setStatus(OutboxEventStatus.FAILED);
+        failed.setRetryCount(3);
+
+        when(outboxEventRepository.findTop50ByStatusOrderByOccurredAtAsc(OutboxEventStatus.FAILED))
+                .thenReturn(List.of(failed));
+
+        dispatcher.requeueFailedEvents();
+
+        assertEquals(OutboxEventStatus.DEAD_LETTER, failed.getStatus());
+        verify(outboxEventRepository, times(1)).save(failed);
+    }
+
     private InventoryOutboxEvent pendingEvent() {
         return InventoryOutboxEvent.builder()
                 .id(UUID.randomUUID())
