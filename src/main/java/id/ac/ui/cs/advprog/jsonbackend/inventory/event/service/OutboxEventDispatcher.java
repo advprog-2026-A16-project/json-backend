@@ -34,8 +34,10 @@ public class OutboxEventDispatcher {
                 markAsSent(event);
             } catch (NonRetryableInventoryEventException ex) {
                 markAsDeadLetter(event);
+                setFailureReason(event, ex);
             } catch (Exception ex) {
                 markRetryableFailure(event);
+                setFailureReason(event, ex);
             }
             outboxEventRepository.save(event);
         }
@@ -59,6 +61,7 @@ public class OutboxEventDispatcher {
     private void markAsSent(InventoryOutboxEvent event) {
         event.setStatus(OutboxEventStatus.SENT);
         event.setSentAt(LocalDateTime.now());
+        event.setFailureReason(null);
     }
 
     private void markAsDeadLetter(InventoryOutboxEvent event) {
@@ -77,5 +80,9 @@ public class OutboxEventDispatcher {
 
     private boolean isRetryLimitReached(InventoryOutboxEvent event) {
         return event.getRetryCount() >= MAX_RETRY;
+    }
+
+    private void setFailureReason(InventoryOutboxEvent event, Exception ex) {
+        event.setFailureReason(ex.getMessage());
     }
 }
