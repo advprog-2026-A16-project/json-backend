@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.event.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReleaseRequestedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReservationRequestedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.handler.StockReleaseRequestedEventHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.handler.StockReservationRequestedEventHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import org.springframework.stereotype.Component;
@@ -16,31 +18,44 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
     private static final Pattern QUANTITY_PATTERN = Pattern.compile("\"quantity\"\\s*:\\s*(\\d+)");
 
     private final StockReservationRequestedEventHandler stockReservationRequestedEventHandler;
+    private final StockReleaseRequestedEventHandler stockReleaseRequestedEventHandler;
 
     public InProcessInventoryEventPublisher(
-            StockReservationRequestedEventHandler stockReservationRequestedEventHandler
+            StockReservationRequestedEventHandler stockReservationRequestedEventHandler,
+            StockReleaseRequestedEventHandler stockReleaseRequestedEventHandler
     ) {
         this.stockReservationRequestedEventHandler = stockReservationRequestedEventHandler;
+        this.stockReleaseRequestedEventHandler = stockReleaseRequestedEventHandler;
     }
 
     @Override
     public void publish(InventoryOutboxEvent event) {
-        if (event.getEventType() != InventoryEventType.STOCK_RESERVED) {
-            return;
-        }
-
         try {
             UUID productId = extractProductId(event.getPayload());
             int quantity = extractQuantity(event.getPayload());
 
-            stockReservationRequestedEventHandler.handle(
-                    new StockReservationRequestedEvent(
-                            event.getEventId(),
-                            productId,
-                            quantity,
-                            event.getCorrelationId()
-                    )
-            );
+            if (event.getEventType() == InventoryEventType.STOCK_RESERVED) {
+                stockReservationRequestedEventHandler.handle(
+                        new StockReservationRequestedEvent(
+                                event.getEventId(),
+                                productId,
+                                quantity,
+                                event.getCorrelationId()
+                        )
+                );
+                return;
+            }
+
+            if (event.getEventType() == InventoryEventType.STOCK_RELEASED) {
+                stockReleaseRequestedEventHandler.handle(
+                        new StockReleaseRequestedEvent(
+                                event.getEventId(),
+                                productId,
+                                quantity,
+                                event.getCorrelationId()
+                        )
+                );
+            }
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid inventory event payload", ex);
         }
