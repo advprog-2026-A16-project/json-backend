@@ -119,6 +119,7 @@ class OutboxEventDispatcherTest {
         InventoryOutboxEvent failed = pendingEvent();
         failed.setStatus(OutboxEventStatus.FAILED);
         failed.setRetryCount(1);
+        failed.setFailureReason("temporary broker outage");
 
         when(outboxEventRepository.findTop50ByStatusOrderByOccurredAtAsc(OutboxEventStatus.FAILED))
                 .thenReturn(List.of(failed));
@@ -126,6 +127,7 @@ class OutboxEventDispatcherTest {
         dispatcher.requeueFailedEvents();
 
         assertEquals(OutboxEventStatus.PENDING, failed.getStatus());
+        assertEquals(null, failed.getFailureReason());
         verify(outboxEventRepository, times(1)).save(failed);
     }
 
