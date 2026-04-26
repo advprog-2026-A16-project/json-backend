@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.event.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.NonRetryableInventoryEventException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.OutboxEventStatus;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
@@ -75,6 +76,22 @@ class OutboxEventDispatcherTest {
         verify(eventPublisher, times(1)).publish(pending);
         assertEquals(OutboxEventStatus.DEAD_LETTER, pending.getStatus());
         assertEquals(3, pending.getRetryCount());
+        verify(outboxEventRepository, times(1)).save(pending);
+    }
+
+    @Test
+    void dispatchPendingEventsShouldMoveToDeadLetterOnNonRetryableFailure() {
+        InventoryOutboxEvent pending = pendingEvent();
+        when(outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxEventStatus.PENDING))
+                .thenReturn(List.of(pending));
+        doThrow(new NonRetryableInventoryEventException("unsupported event type"))
+                .when(eventPublisher).publish(pending);
+
+        dispatcher.dispatchPendingEvents();
+
+        verify(eventPublisher, times(1)).publish(pending);
+        assertEquals(OutboxEventStatus.DEAD_LETTER, pending.getStatus());
+        assertEquals(0, pending.getRetryCount());
         verify(outboxEventRepository, times(1)).save(pending);
     }
 
