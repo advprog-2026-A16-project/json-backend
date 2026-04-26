@@ -84,15 +84,14 @@ public class OutboxEventDispatcher {
     }
 
     private void setFailureReason(InventoryOutboxEvent event, Exception ex) {
-        String message = ex.getMessage();
-        if (message == null) {
-            event.setFailureReason("Unknown failure");
-            return;
+        String message = ex.getMessage() == null ? "Unknown failure" : ex.getMessage();
+        event.setFailureReason(truncateFailureReason(message));
+    }
+
+    private String truncateFailureReason(String message) {
+        if (message.length() <= MAX_FAILURE_REASON_LENGTH) {
+            return message;
         }
-        if (message.length() > MAX_FAILURE_REASON_LENGTH) {
-            event.setFailureReason(message.substring(0, MAX_FAILURE_REASON_LENGTH));
-            return;
-        }
-        event.setFailureReason(message);
+        return message.substring(0, MAX_FAILURE_REASON_LENGTH);
     }
 }
