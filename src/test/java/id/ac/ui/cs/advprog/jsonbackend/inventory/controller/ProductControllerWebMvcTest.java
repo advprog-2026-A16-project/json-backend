@@ -215,4 +215,75 @@ class ProductControllerWebMvcTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("Jastiper can only delete own product"));
     }
+
+    @Test
+    void createProductReturnsForbiddenWhenActorIsTitipers() throws Exception {
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("titipers@test.com").role(Role.TITIPERS).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+        doThrow(new ForbiddenInventoryAccessException("Only jastiper can manage own products"))
+                .when(productService).createAsJastiper(any(), eq(actorId), eq(Role.TITIPERS));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Only jastiper can manage own products"));
+    }
+
+    @Test
+    void updateProductReturnsForbiddenWhenActorIsTitipers() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("titipers@test.com").role(Role.TITIPERS).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+        doThrow(new ForbiddenInventoryAccessException("Only jastiper can manage own products"))
+                .when(productService).updateAsJastiper(eq(id), any(), eq(actorId), eq(Role.TITIPERS));
+
+        mockMvc.perform(put("/api/products/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Only jastiper can manage own products"));
+    }
+
+    @Test
+    void deleteProductReturnsForbiddenWhenActorIsTitipers() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("titipers@test.com").role(Role.TITIPERS).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+        doThrow(new ForbiddenInventoryAccessException("Only jastiper can manage own products"))
+                .when(productService).deleteAsJastiper(id, actorId, Role.TITIPERS);
+
+        mockMvc.perform(delete("/api/products/{id}", id))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Only jastiper can manage own products"));
+    }
 }
