@@ -17,7 +17,19 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("JSON Backend API")
-                        .description("API documentation for JaStip Online Nasional backend")
+                        .description("""
+                                API documentation for JaStip Online Nasional backend.
+
+                                Inventory module uses outbox-based event flow for stock mutation events:
+                                - STOCK_RESERVED
+                                - STOCK_RELEASED
+
+                                Outbox lifecycle:
+                                PENDING -> SENT
+                                PENDING -> FAILED -> PENDING (retryable)
+                                FAILED -> DEAD_LETTER (retry limit reached)
+                                PENDING -> DEAD_LETTER (non-retryable failure)
+                                """)
                         .version("v1"))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()

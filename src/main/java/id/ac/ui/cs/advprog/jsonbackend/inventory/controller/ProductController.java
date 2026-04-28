@@ -117,7 +117,13 @@ public class ProductController {
 
     @PostMapping("/{id}/reserve")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Reserve stock for checkout flow", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(
+            summary = "Reserve stock for checkout flow",
+            description = """
+                    Reserves stock synchronously and appends outbox event (STOCK_RESERVED) for async event handling.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Reserved"),
             @ApiResponse(responseCode = "400", description = "Invalid quantity"),
