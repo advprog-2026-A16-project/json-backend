@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InventoryExceptionHandler;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -169,5 +170,49 @@ class ProductControllerWebMvcTest {
                 .andExpect(status().isCreated());
 
         verify(productService, times(1)).createAsJastiper(any(), eq(actorId), eq(Role.JASTIPER));
+    }
+
+    @Test
+    void updateProductReturnsForbiddenWhenServiceRejectsOwnership() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("jastiper@test.com").role(Role.JASTIPER).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+        doThrow(new ForbiddenInventoryAccessException("Jastiper can only update own product"))
+                .when(productService).updateAsJastiper(eq(id), any(), eq(actorId), eq(Role.JASTIPER));
+
+        mockMvc.perform(put("/api/products/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Jastiper can only update own product"));
+    }
+
+    @Test
+    void deleteProductReturnsForbiddenWhenServiceRejectsOwnership() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("jastiper@test.com").role(Role.JASTIPER).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+        doThrow(new ForbiddenInventoryAccessException("Jastiper can only delete own product"))
+                .when(productService).deleteAsJastiper(id, actorId, Role.JASTIPER);
+
+        mockMvc.perform(delete("/api/products/{id}", id))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Jastiper can only delete own product"));
     }
 }
