@@ -340,6 +340,17 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void updateAsJastiperThrowsWhenActorNotJastiper() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.updateAsJastiper(id, request, UUID.randomUUID(), Role.TITIPERS));
+        verify(productRepository, never()).findById(id);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void deleteProductSuccess() {
         UUID id = UUID.randomUUID();
         Product existing = sampleEntity();
@@ -362,6 +373,16 @@ class ProductServiceImplTest {
         assertThrows(ForbiddenInventoryAccessException.class,
                 () -> productService.deleteAsJastiper(id, UUID.randomUUID(), Role.JASTIPER));
         verify(productRepository, never()).delete(existing);
+    }
+
+    @Test
+    void deleteAsJastiperThrowsWhenActorNotJastiper() {
+        UUID id = UUID.randomUUID();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.deleteAsJastiper(id, UUID.randomUUID(), Role.TITIPERS));
+        verify(productRepository, never()).findById(id);
+        verify(productRepository, never()).delete(org.mockito.ArgumentMatchers.any());
     }
 
     private ProductRequest sampleRequest() {
