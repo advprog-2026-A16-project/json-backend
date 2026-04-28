@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InventoryExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,16 +12,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,10 +42,11 @@ class ProductControllerWebMvcTest {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.clearContext();
         ProductController controller = new ProductController(productService);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(), new InventoryExceptionHandler())
                 .build();
     }
 
@@ -86,5 +97,77 @@ class ProductControllerWebMvcTest {
                 .andExpect(status().isNoContent());
 
         verify(productService, times(1)).reserveStock(id, 1);
+    }
+
+    @Test
+    void createProductReturnsForbiddenWhenNoAuthenticatedUser() throws Exception {
+                mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateProductReturnsForbiddenWhenNoAuthenticatedUser() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(put("/api/products/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteProductReturnsForbiddenWhenNoAuthenticatedUser() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/products/{id}", id))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createProductPassesAuthenticatedActorToService() throws Exception {
+        UUID actorId = UUID.randomUUID();
+        User actor = User.builder().id(actorId).email("jastiper@test.com").role(Role.JASTIPER).password("x").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor, null, actor.getAuthorities())
+        );
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"n",
+                                  "description":"d",
+                                  "price":10,
+                                  "stock":1,
+                                  "originCountry":"ID",
+                                  "purchaseDate":"2026-04-01",
+                                  "jastiperId":"11111111-1111-4111-8111-111111111111"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        verify(productService, times(1)).createAsJastiper(any(), eq(actorId), eq(Role.JASTIPER));
     }
 }
