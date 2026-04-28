@@ -1,11 +1,13 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventPayloadFactory;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
@@ -116,6 +118,15 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductResponse createAsJastiper(ProductRequest request, UUID actorId, Role actorRole) {
+        assertJastiperActor(actorId, actorRole);
+        if (request == null || request.getJastiperId() == null || !actorId.equals(request.getJastiperId())) {
+            throw new ForbiddenInventoryAccessException("Jastiper can only create own product");
+        }
+        return create(request);
+    }
+
+    @Override
     public ProductResponse update(UUID id, ProductRequest request) {
         validateBusinessRules(request);
 
@@ -127,8 +138,28 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductResponse updateAsJastiper(UUID id, ProductRequest request, UUID actorId, Role actorRole) {
+        assertJastiperActor(actorId, actorRole);
+        Product existing = getProductOrThrow(id);
+        if (!actorId.equals(existing.getJastiperId())) {
+            throw new ForbiddenInventoryAccessException("Jastiper can only update own product");
+        }
+        return update(id, request);
+    }
+
+    @Override
     public void delete(UUID id) {
         Product existing = getProductOrThrow(id);
+        productRepository.delete(existing);
+    }
+
+    @Override
+    public void deleteAsJastiper(UUID id, UUID actorId, Role actorRole) {
+        assertJastiperActor(actorId, actorRole);
+        Product existing = getProductOrThrow(id);
+        if (!actorId.equals(existing.getJastiperId())) {
+            throw new ForbiddenInventoryAccessException("Jastiper can only delete own product");
+        }
         productRepository.delete(existing);
     }
 
@@ -160,5 +191,14 @@ public class ProductServiceImpl implements ProductService {
                 .correlationId(UUID.randomUUID().toString())
                 .build();
         outboxEventRepository.save(outboxEvent);
+    }
+
+    private void assertJastiperActor(UUID actorId, Role actorRole) {
+        if (actorId == null) {
+            throw new ForbiddenInventoryAccessException("Authenticated user id is required");
+        }
+        if (actorRole != Role.JASTIPER) {
+            throw new ForbiddenInventoryAccessException("Only jastiper can manage own products");
+        }
     }
 }

@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +16,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -87,7 +91,8 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     public ProductResponse createProduct(@Valid @RequestBody ProductRequest request) {
-        return productService.create(request);
+        User actor = getAuthenticatedUser();
+        return productService.createAsJastiper(request, actor.getId(), actor.getRole());
     }
 
     @PutMapping("/{id}")
@@ -100,7 +105,8 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     public ProductResponse updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
-        return productService.update(id, request);
+        User actor = getAuthenticatedUser();
+        return productService.updateAsJastiper(id, request, actor.getId(), actor.getRole());
     }
 
     @DeleteMapping("/{id}")
@@ -112,7 +118,8 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     public void deleteProduct(@PathVariable UUID id) {
-        productService.delete(id);
+        User actor = getAuthenticatedUser();
+        productService.deleteAsJastiper(id, actor.getId(), actor.getRole());
     }
 
     @PostMapping("/{id}/reserve")
@@ -136,5 +143,13 @@ public class ProductController {
             throw new InvalidProductException("Quantity must be greater than zero");
         }
         productService.reserveStock(id, quantity);
+    }
+
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            throw new ForbiddenInventoryAccessException("Authenticated user is required");
+        }
+        return user;
     }
 }

@@ -1,10 +1,12 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
@@ -91,6 +93,26 @@ class ProductServiceImplTest {
     void createProductThrowsWhenRequestNull() {
         assertThrows(InvalidProductException.class, () -> productService.create(null));
         verify(productMapper, never()).toEntity(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createAsJastiperThrowsWhenActorNotJastiper() {
+        ProductRequest request = sampleRequest();
+        UUID actorId = request.getJastiperId();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.createAsJastiper(request, actorId, Role.TITIPERS));
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createAsJastiperThrowsWhenActorNotOwner() {
+        ProductRequest request = sampleRequest();
+        UUID actorId = UUID.randomUUID();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.createAsJastiper(request, actorId, Role.JASTIPER));
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -304,6 +326,20 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void updateAsJastiperThrowsWhenNotOwner() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+        Product existing = sampleEntity();
+        existing.setJastiperId(UUID.randomUUID());
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.updateAsJastiper(id, request, UUID.randomUUID(), Role.JASTIPER));
+        verify(productRepository, never()).save(existing);
+    }
+
+    @Test
     void deleteProductSuccess() {
         UUID id = UUID.randomUUID();
         Product existing = sampleEntity();
@@ -313,6 +349,19 @@ class ProductServiceImplTest {
         productService.delete(id);
 
         verify(productRepository, times(1)).delete(existing);
+    }
+
+    @Test
+    void deleteAsJastiperThrowsWhenNotOwner() {
+        UUID id = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setJastiperId(UUID.randomUUID());
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.deleteAsJastiper(id, UUID.randomUUID(), Role.JASTIPER));
+        verify(productRepository, never()).delete(existing);
     }
 
     private ProductRequest sampleRequest() {

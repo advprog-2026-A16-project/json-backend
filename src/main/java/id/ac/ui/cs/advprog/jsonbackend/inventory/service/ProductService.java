@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 
@@ -21,7 +22,13 @@ public interface ProductService {
 
     ProductResponse create(ProductRequest request);
 
+    ProductResponse createAsJastiper(ProductRequest request, UUID actorId, Role actorRole);
+
     ProductResponse update(UUID id, ProductRequest request);
 
+    ProductResponse updateAsJastiper(UUID id, ProductRequest request, UUID actorId, Role actorRole);
+
     void delete(UUID id);
+
+    void deleteAsJastiper(UUID id, UUID actorId, Role actorRole);
 }
