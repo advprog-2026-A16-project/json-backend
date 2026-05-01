@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.config;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.filter.JwtAuthenticationFilter;
+import id.ac.ui.cs.advprog.jsonbackend.auth.security.JwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.JwtService;
 import org.springframework.context.annotation.Bean;

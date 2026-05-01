@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.jsonbackend.auth.filter;
+package id.ac.ui.cs.advprog.jsonbackend.auth.security;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.JwtService;
 import jakarta.servlet.FilterChain;
@@ -11,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
