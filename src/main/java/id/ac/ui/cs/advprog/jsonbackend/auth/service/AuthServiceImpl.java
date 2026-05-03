@@ -5,6 +5,9 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.AuthEventPayloadFactory;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.model.AuthOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.repository.AuthOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
@@ -19,6 +22,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -26,18 +31,18 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final ApplicationEventPublisher eventPublisher;
+    private final AuthOutboxEventRepository outboxEventRepository;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
                            AuthenticationManager authenticationManager,
-                           ApplicationEventPublisher eventPublisher) {
+                           AuthOutboxEventRepository outboxEventRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
-        this.eventPublisher = eventPublisher;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -50,7 +55,18 @@ public class AuthServiceImpl implements AuthService {
         );
         userRepository.save(user);
 
-        eventPublisher.publishEvent(new UserRegisteredEvent(user));
+        UUID eventId = UUID.randomUUID();
+        String correlationId = UUID.randomUUID().toString();
+
+        AuthOutboxEvent outboxEvent = AuthOutboxEvent.builder()
+                .eventId(eventId)
+                .eventType("USER_REGISTERED")
+                .aggregateId(user.getId())
+                .payload(AuthEventPayloadFactory.emailPayload(user.getId(),user.getEmail()))
+                .correlationId(correlationId)
+                .build();
+
+        outboxEventRepository.save(outboxEvent);
 
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponse(jwtToken, "Registration successful");
