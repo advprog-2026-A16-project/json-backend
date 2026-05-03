@@ -1,5 +1,10 @@
 package id.ac.ui.cs.advprog.jsonbackend.shared.event;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
+import java.util.UUID;
 
-public record UserRegisteredEvent(User user) {}
+public record UserRegisteredEvent(
+        UUID eventId,
+        UUID userId,
+        String email,
+        String correlationId
+) {}
