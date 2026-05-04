@@ -8,6 +8,6 @@ public final class AuthEventPayloadFactory {
     }
 
     public static String emailPayload(UUID userId, String email) {
-        return "{\"userId\":\"" + userId + "\",\"email\":" + email + "}";
+        return "{\"userId\":\"" + userId + "\",\"email\":\"" + email + "\"}";
     }
 }
