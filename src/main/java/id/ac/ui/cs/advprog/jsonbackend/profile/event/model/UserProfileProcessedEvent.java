@@ -12,10 +12,10 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(
-        name = "profile_processed_events",
+        name = "user_profile_processed_events",
         uniqueConstraints = @UniqueConstraint(name = "uk_profile_processed_event", columnNames = {"event_id", "handler_name"})
 )
-public class ProfileProcessedEvent {
+public class UserProfileProcessedEvent {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

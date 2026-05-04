@@ -2,8 +2,8 @@ package id.ac.ui.cs.advprog.jsonbackend.profile.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import id.ac.ui.cs.advprog.jsonbackend.profile.event.model.ProfileProcessedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.profile.event.repository.ProfileProcessedEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.profile.event.model.UserProfileProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.profile.event.repository.UserProfileProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.profile.model.UserProfile;
 import id.ac.ui.cs.advprog.jsonbackend.profile.repository.UserProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
@@ -15,11 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserRegisteredEventHandler {
     private final UserProfileRepository userProfileRepository;
     private final UserRepository userRepository;
-    private final ProfileProcessedEventRepository processedEventRepository;
+    private final UserProfileProcessedEventRepository processedEventRepository;
 
     public UserRegisteredEventHandler(UserProfileRepository userProfileRepository,
                                       UserRepository userRepository,
-                                      ProfileProcessedEventRepository processedEventRepository) {
+                                      UserProfileProcessedEventRepository processedEventRepository) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
         this.processedEventRepository = processedEventRepository;
@@ -46,7 +46,7 @@ public class UserRegisteredEventHandler {
                 .build();
         userProfileRepository.save(newProfile);
 
-        processedEventRepository.save(ProfileProcessedEvent.builder()
+        processedEventRepository.save(UserProfileProcessedEvent.builder()
                 .eventId(event.eventId())
                 .handlerName(handlerName)
                 .build());

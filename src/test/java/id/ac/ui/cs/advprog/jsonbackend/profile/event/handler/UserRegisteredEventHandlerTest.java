@@ -2,8 +2,8 @@ package id.ac.ui.cs.advprog.jsonbackend.profile.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import id.ac.ui.cs.advprog.jsonbackend.profile.event.model.ProfileProcessedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.profile.event.repository.ProfileProcessedEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.profile.event.model.UserProfileProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.profile.event.repository.UserProfileProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.profile.model.UserProfile;
 import id.ac.ui.cs.advprog.jsonbackend.profile.repository.UserProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
@@ -30,7 +30,7 @@ class UserRegisteredEventHandlerTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private ProfileProcessedEventRepository processedEventRepository;
+    private UserProfileProcessedEventRepository processedEventRepository;
 
     @InjectMocks
     private UserRegisteredEventHandler handler;
@@ -58,7 +58,7 @@ class UserRegisteredEventHandlerTest {
         assertEquals(mockUser, savedProfile.getUser());
         assertEquals("budi", savedProfile.getUsername());
 
-        ArgumentCaptor<ProfileProcessedEvent> processedCaptor = ArgumentCaptor.forClass(ProfileProcessedEvent.class);
+        ArgumentCaptor<UserProfileProcessedEvent> processedCaptor = ArgumentCaptor.forClass(UserProfileProcessedEvent.class);
         verify(processedEventRepository, times(1)).save(processedCaptor.capture());
         assertEquals(eventId, processedCaptor.getValue().getEventId());
         assertEquals("UserRegisteredEventHandler", processedCaptor.getValue().getHandlerName());
