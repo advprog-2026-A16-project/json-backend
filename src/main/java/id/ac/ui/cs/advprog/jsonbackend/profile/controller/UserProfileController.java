@@ -43,7 +43,7 @@ public class UserProfileController {
                 profile.getUsername(),
                 profile.getFullName(),
                 profile.getUser().getRole(),
-                profile.getSuccessfulTransaction(),
+                profile.getSuccessfulTransactions(),
                 profile.getRating()
         );
     }

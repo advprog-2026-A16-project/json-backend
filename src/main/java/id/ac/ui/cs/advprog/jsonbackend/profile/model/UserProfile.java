@@ -29,8 +29,14 @@ public class UserProfile {
 
     private String fullName;
 
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
     @Builder.Default
-    private int successfulTransaction = 0;
+    private boolean isVerifiedJastiper = false;
+
+    @Builder.Default
+    private int successfulTransactions = 0;
 
     @Builder.Default
     private double rating = 0.0;
