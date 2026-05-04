@@ -37,7 +37,7 @@ class JwtServiceImplTest {
         JwtKeyProvider keyProvider = new JwtKeyProvider(props);
         jwtService = new JwtServiceImpl(keyProvider, props);
 
-        user = new User("test@example.com", "password", Role.TITIPERS);
+        user = new User("test@email.com", "password", Role.TITIPERS);
     }
 
     @Test
@@ -76,7 +76,7 @@ class JwtServiceImplTest {
     @Test
     void isTokenValid_shouldReturnFalse_forDifferentUser() {
         String token = jwtService.generateToken(user);
-        User differentUser = new User("other@example.com", "password", Role.TITIPERS);
+        User differentUser = new User("other@email.com", "password", Role.TITIPERS);
         assertFalse(jwtService.isTokenValid(token, differentUser));
     }
 

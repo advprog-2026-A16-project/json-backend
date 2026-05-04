@@ -5,6 +5,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.model.AuthOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.repository.AuthOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
@@ -16,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -41,8 +42,9 @@ class AuthServiceImplTest {
     private JwtService jwtService;
     @Mock
     private AuthenticationManager authenticationManager;
+
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private AuthOutboxEventRepository outboxEventRepository;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -51,12 +53,12 @@ class AuthServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        user = new User("test@example.com", "encodedPassword", Role.TITIPERS);
+        user = new User("test@email.com", "encodedPassword", Role.TITIPERS);
     }
 
     @Test
     void registerSuccess() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password", "password");
+        RegisterRequest request = new RegisterRequest("test@email.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
@@ -65,27 +67,35 @@ class AuthServiceImplTest {
 
         assertNotNull(response);
         assertEquals("jwt-token", response.token());
+
         verify(userRepository).save(any(User.class));
+        verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
     @Test
     void registerThrowsExceptionWhenPasswordMismatch() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password", "wrong");
+        RegisterRequest request = new RegisterRequest("test@email.com", "password", "wrong");
+
         assertThrows(PasswordMismatchException.class, () -> authService.register(request));
+
         verify(userRepository, never()).save(any(User.class));
+        verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
     @Test
     void registerThrowsExceptionWhenEmailAlreadyExists() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password", "password");
+        RegisterRequest request = new RegisterRequest("test@email.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(user));
+
         assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(request));
+
         verify(userRepository, never()).save(any(User.class));
+        verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
     @Test
     void registerAssignsDefaultRoleWhenRoleIsNull() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password", "password");
+        RegisterRequest request = new RegisterRequest("test@email.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
@@ -93,11 +103,12 @@ class AuthServiceImplTest {
         authService.register(request);
 
         verify(userRepository).save(argThat(savedUser -> savedUser.getRole() == Role.TITIPERS));
+        verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
     @Test
     void loginSuccess() {
-        LoginRequest request = new LoginRequest("test@example.com", "password");
+        LoginRequest request = new LoginRequest("test@email.com", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(user));
         when(jwtService.generateToken(user)).thenReturn("jwt-token");
 
