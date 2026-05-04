@@ -44,7 +44,12 @@ public class UserProfileServiceImplTest {
         when(userProfileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
         when(userProfileRepository.save(any(UserProfile.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        UserProfile updated = userProfileService.updateProfile(userId, "new_username", "Leon Kennedy");
+        UserProfile updated = userProfileService.updateProfile(
+                userId,
+                "new_username",
+                "Leon Kennedy",
+                "ini bio"
+        );
 
         assertEquals("new_username", updated.getUsername());
         assertEquals("Leon Kennedy", updated.getFullName());
