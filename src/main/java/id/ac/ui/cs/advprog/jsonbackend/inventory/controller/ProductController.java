@@ -47,16 +47,27 @@ public class ProductController {
     @Operation(summary = "Get all products")
     @ApiResponse(responseCode = "200", description = "Success",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class))))
-    public List<ProductResponse> getAllProducts() {
-        return productService.findAll();
+    public List<ProductResponse> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        return productService.findAll(page, size, sortBy, direction);
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search products by keyword")
     @ApiResponse(responseCode = "200", description = "Success",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class))))
-    public List<ProductResponse> searchProducts(@RequestParam String keyword) {
-        return productService.searchByKeyword(keyword);
+    public List<ProductResponse> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        return productService.searchByKeyword(keyword, page, size, sortBy, direction);
     }
 
     @GetMapping("/jastiper/{jastiperId}")
@@ -66,8 +77,14 @@ public class ProductController {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class)))),
             @ApiResponse(responseCode = "400", description = "Invalid jastiper id")
     })
-    public List<ProductResponse> getProductsByJastiper(@PathVariable UUID jastiperId) {
-        return productService.findByJastiperId(jastiperId);
+    public List<ProductResponse> getProductsByJastiper(
+            @PathVariable UUID jastiperId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        return productService.findByJastiperId(jastiperId, page, size, sortBy, direction);
     }
 
     @GetMapping("/{id}")
