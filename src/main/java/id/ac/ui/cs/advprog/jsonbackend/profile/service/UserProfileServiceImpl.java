@@ -37,7 +37,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     @Override
-    public UserProfile updateProfile(UUID userId, String username, String fullName) {
+    public UserProfile updateProfile(UUID userId, String username, String fullName, String bio) {
         UserProfile profile = getProfileByUserId(userId);
 
         if (username != null && !username.trim().isEmpty()) {
@@ -45,6 +45,9 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
         if (fullName != null && !fullName.trim().isEmpty()) {
             profile.setFullName(fullName.trim());
+        }
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            profile.setBio(bio.trim());
         }
 
         return userProfileRepository.save(profile);

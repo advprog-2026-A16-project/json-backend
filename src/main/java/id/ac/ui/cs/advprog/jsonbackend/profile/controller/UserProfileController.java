@@ -31,7 +31,8 @@ public class UserProfileController {
         UserProfile updated = userProfileService.updateProfile(
                 user.getId(),
                 request.username(),
-                request.fullName()
+                request.fullName(),
+                request.bio()
         );
         return ResponseEntity.ok(convertToResponse(updated));
     }

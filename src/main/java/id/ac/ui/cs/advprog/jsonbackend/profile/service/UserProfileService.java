@@ -8,5 +8,5 @@ import java.util.UUID;
 public interface UserProfileService {
     UserProfile createProfileForUser(User user, String requestedUsername);
     UserProfile getProfileByUserId(UUID userId);
-    UserProfile updateProfile(UUID userId, String username, String fullName);
+    UserProfile updateProfile(UUID userId, String username, String fullName, String bio);
 }
