@@ -16,12 +16,11 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -46,9 +45,11 @@ public class AuthServiceImpl implements AuthService {
         this.outboxEventRepository = outboxEventRepository;
     }
 
+    @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         validateRegisterRequest(request);
-        
+
         User user = new User(
                 request.email(),
                 passwordEncoder.encode(request.password()),
@@ -59,11 +60,18 @@ public class AuthServiceImpl implements AuthService {
         UUID eventId = UUID.randomUUID();
         String correlationId = UUID.randomUUID().toString();
 
+        String jsonPayload = AuthEventPayloadFactory.userRegisteredPayload(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getAccountStatus().name()
+        );
+
         AuthOutboxEvent outboxEvent = AuthOutboxEvent.builder()
                 .eventId(eventId)
                 .eventType(AuthEventType.USER_REGISTERED.name())
                 .aggregateId(user.getId())
-                .payload(AuthEventPayloadFactory.emailPayload(user.getId(),user.getEmail()))
+                .payload(jsonPayload)
                 .correlationId(correlationId)
                 .build();
 
