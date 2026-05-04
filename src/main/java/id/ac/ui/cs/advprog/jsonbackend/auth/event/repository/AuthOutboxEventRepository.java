@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface AuthOutboxEventRepository extends JpaRepository<AuthOutboxEvent, UUID> {
     List<AuthOutboxEvent> findTop50ByStatusOrderByCreatedAtAsc(AuthOutboxEventStatus status);
+    List<AuthOutboxEvent> findTop50ByStatusOrderByOccurredAtAsc(AuthOutboxEventStatus status);
 }
