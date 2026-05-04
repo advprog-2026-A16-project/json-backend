@@ -12,7 +12,6 @@ import java.util.regex.Pattern;
 
 @Component
 public class InProcessAuthEventPublisher implements AuthEventPublisher {
-
     private static final Pattern USER_ID_PATTERN = Pattern.compile("\"userId\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("\"email\"\\s*:\\s*\"([^\"]+)\"");
 
@@ -27,7 +26,7 @@ public class InProcessAuthEventPublisher implements AuthEventPublisher {
         if (AuthEventType.USER_REGISTERED.name().equals(event.getEventType())) {
             UUID userId = extractUserId(event.getPayload());
             String email = extractEmail(event.getPayload());
-            
+
             UserRegisteredEvent userRegisteredEvent = new UserRegisteredEvent(
                     event.getEventId(),
                     userId,
