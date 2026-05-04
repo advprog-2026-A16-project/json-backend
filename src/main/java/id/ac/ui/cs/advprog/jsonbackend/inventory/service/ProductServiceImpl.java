@@ -20,12 +20,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "name", "price", "stock", "purchaseDate"
+    );
 
     private final ProductRepository productRepository;
     private final InventoryOutboxEventRepository outboxEventRepository;
@@ -236,6 +240,9 @@ public class ProductServiceImpl implements ProductService {
             throw new InvalidProductException("Size must be greater than zero");
         }
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
+            throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
+        }
         Sort.Direction sortDirection = Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.DESC);
         return PageRequest.of(page, size, Sort.by(sortDirection, safeSortBy));
     }
