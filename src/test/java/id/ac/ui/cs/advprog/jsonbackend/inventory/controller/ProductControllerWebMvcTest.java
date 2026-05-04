@@ -18,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.UUID;
 
@@ -59,6 +60,24 @@ class ProductControllerWebMvcTest {
                         .queryParam("quantity", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Quantity must be greater than zero"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenPageNegative() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
 
         verifyNoInteractions(productService);
     }
