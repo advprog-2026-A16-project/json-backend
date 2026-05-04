@@ -243,7 +243,9 @@ public class ProductServiceImpl implements ProductService {
         if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
             throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
         }
-        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.DESC);
+        String safeDirection = (direction == null || direction.isBlank()) ? "desc" : direction;
+        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(safeDirection)
+                .orElseThrow(() -> new InvalidProductException("Unsupported sort direction: " + safeDirection));
         return PageRequest.of(page, size, Sort.by(sortDirection, safeSortBy));
     }
 }

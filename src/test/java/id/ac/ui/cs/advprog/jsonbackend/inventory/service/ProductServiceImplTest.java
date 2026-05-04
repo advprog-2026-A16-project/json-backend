@@ -214,8 +214,6 @@ class ProductServiceImplTest {
 
     @Test
     void findAllThrowsWhenDirectionInvalid() {
-        when(productRepository.findAll(org.mockito.ArgumentMatchers.any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
         assertThrows(InvalidProductException.class,
                 () -> productService.findAll(0, 20, "createdAt", "sideways"));
         verify(productRepository, never()).findAll(org.mockito.ArgumentMatchers.any(Pageable.class));
