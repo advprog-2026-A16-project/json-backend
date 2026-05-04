@@ -53,6 +53,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
+        validatePaginationParams(page, size);
         return productService.findAll(page, size, sortBy, direction);
     }
 
@@ -67,6 +68,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
+        validatePaginationParams(page, size);
         return productService.searchByKeyword(keyword, page, size, sortBy, direction);
     }
 
@@ -84,6 +86,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
+        validatePaginationParams(page, size);
         return productService.findByJastiperId(jastiperId, page, size, sortBy, direction);
     }
 
@@ -168,5 +171,14 @@ public class ProductController {
             throw new ForbiddenInventoryAccessException("Authenticated user is required");
         }
         return user;
+    }
+
+    private void validatePaginationParams(int page, int size) {
+        if (page < 0) {
+            throw new InvalidProductException("Page must be zero or greater");
+        }
+        if (size <= 0) {
+            throw new InvalidProductException("Size must be greater than zero");
+        }
     }
 }
