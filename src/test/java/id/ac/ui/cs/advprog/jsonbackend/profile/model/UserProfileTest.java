@@ -14,13 +14,15 @@ public class UserProfileTest {
         User user = User.builder().email("test@email.com").build();
         UserProfile profile = UserProfile.builder()
                 .user(user)
-                .username("testuser")
+                .username("budi")
                 .fullName("Test User")
+                .bio("test bio")
+                .isVerifiedJastiper(false)
                 .build();
 
         profile.onCreate();
 
-        assertEquals("testuser", profile.getUsername());
+        assertEquals("budi", profile.getUsername());
         assertEquals(0, profile.getSuccessfulTransaction());
         assertEquals(0.0, profile.getRating());
 
