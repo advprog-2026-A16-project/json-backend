@@ -6,5 +6,7 @@ public record UserRegisteredEvent(
         UUID eventId,
         UUID userId,
         String email,
+        String role,
+        String accountStatus,
         String correlationId
 ) {}
