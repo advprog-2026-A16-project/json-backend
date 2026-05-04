@@ -66,15 +66,55 @@ class InProcessAuthEventPublisherTest {
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
+
     @Test
-    void publishThrowsExceptionWhenPayloadMissingFields() {
+    void publishThrowsExceptionWhenPayloadMissingUserId() {
         AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
         outboxEvent.setEventType(AuthEventType.USER_REGISTERED.name());
-        outboxEvent.setPayload("{\"userId\":\"" + UUID.randomUUID() + "\"}");
+        outboxEvent.setPayload("{\"email\":\"test@email.com\",\"role\":\"TITIPERS\",\"accountStatus\":\"ACTIVE\"}");
+
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> publisher.publish(outboxEvent));
+        assertEquals("Missing userId", exception.getMessage());
+
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void publishThrowsExceptionWhenPayloadMissingEmail() {
+        AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
+        outboxEvent.setEventType(AuthEventType.USER_REGISTERED.name());
+        outboxEvent.setPayload("{\"userId\":\"" + UUID.randomUUID() + "\",\"role\":\"TITIPERS\",\"accountStatus\":\"ACTIVE\"}");
 
         IllegalArgumentException exception =
                 assertThrows(IllegalArgumentException.class, () -> publisher.publish(outboxEvent));
         assertEquals("Missing email", exception.getMessage());
+
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void publishThrowsExceptionWhenPayloadMissingRole() {
+        AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
+        outboxEvent.setEventType(AuthEventType.USER_REGISTERED.name());
+        outboxEvent.setPayload("{\"userId\":\"" + UUID.randomUUID() + "\",\"email\":\"test@email.com\",\"accountStatus\":\"ACTIVE\"}");
+
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> publisher.publish(outboxEvent));
+        assertEquals("Missing role", exception.getMessage());
+
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void publishThrowsExceptionWhenPayloadMissingAccountStatus() {
+        AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
+        outboxEvent.setEventType(AuthEventType.USER_REGISTERED.name());
+        outboxEvent.setPayload("{\"userId\":\"" + UUID.randomUUID() + "\",\"email\":\"test@email.com\",\"role\":\"TITIPERS\"}");
+
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> publisher.publish(outboxEvent));
+        assertEquals("Missing accountStatus", exception.getMessage());
 
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
