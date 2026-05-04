@@ -8,7 +8,9 @@ public record UserProfileResponse(
         String email,
         String username,
         String fullName,
+        String bio,
         Role role,
+        boolean isVerifiedJastiper,
         Integer successfulTransactions,
         Double rating
 ) {}

@@ -42,7 +42,9 @@ public class UserProfileController {
                 profile.getUser().getEmail(),
                 profile.getUsername(),
                 profile.getFullName(),
+                profile.getBio(),
                 profile.getUser().getRole(),
+                profile.isVerifiedJastiper(),
                 profile.getSuccessfulTransactions(),
                 profile.getRating()
         );
