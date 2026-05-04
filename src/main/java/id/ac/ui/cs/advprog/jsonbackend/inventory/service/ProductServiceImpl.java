@@ -13,6 +13,9 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundExcept
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.repository.ProductRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +42,14 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findAll() {
-        return productRepository.findAll().stream()
+        return findAll(0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findAll(int page, int size, String sortBy, String direction) {
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
+        return productRepository.findAll(pageable).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
@@ -47,14 +57,23 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> searchByKeyword(String keyword) {
+        return searchByKeyword(keyword, 0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchByKeyword(String keyword, int page, int size, String sortBy, String direction) {
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (normalizedKeyword.isEmpty()) {
-            return productRepository.findAll().stream()
+            return productRepository.findAll(pageable).stream()
                     .map(productMapper::toResponse)
                     .toList();
         }
         return productRepository
-                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                        normalizedKeyword, normalizedKeyword, pageable
+                )
                 .stream()
                 .map(productMapper::toResponse)
                 .toList();
@@ -63,10 +82,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findByJastiperId(UUID jastiperId) {
+        return findByJastiperId(jastiperId, 0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findByJastiperId(UUID jastiperId, int page, int size, String sortBy, String direction) {
         if (jastiperId == null) {
             throw new InvalidProductException("Jastiper id is required");
         }
-        return productRepository.findByJastiperId(jastiperId).stream()
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
+        return productRepository.findByJastiperId(jastiperId, pageable).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
@@ -200,5 +226,17 @@ public class ProductServiceImpl implements ProductService {
         if (actorRole != Role.JASTIPER) {
             throw new ForbiddenInventoryAccessException("Only jastiper can manage own products");
         }
+    }
+
+    private Pageable buildPageable(int page, int size, String sortBy, String direction) {
+        if (page < 0) {
+            throw new InvalidProductException("Page must be zero or greater");
+        }
+        if (size <= 0) {
+            throw new InvalidProductException("Size must be greater than zero");
+        }
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.DESC);
+        return PageRequest.of(page, size, Sort.by(sortDirection, safeSortBy));
     }
 }
