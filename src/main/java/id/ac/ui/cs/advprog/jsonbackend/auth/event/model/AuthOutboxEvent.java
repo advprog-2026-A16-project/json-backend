@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.event.model;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.event.AuthOutboxEventStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.enums.AuthOutboxEventStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;

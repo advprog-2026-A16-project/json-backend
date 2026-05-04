@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.AuthEventPayloadFactory;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.enums.AuthEventType;
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.model.AuthOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.repository.AuthOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
@@ -60,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
 
         AuthOutboxEvent outboxEvent = AuthOutboxEvent.builder()
                 .eventId(eventId)
-                .eventType("USER_REGISTERED")
+                .eventType(AuthEventType.USER_REGISTERED.name())
                 .aggregateId(user.getId())
                 .payload(AuthEventPayloadFactory.emailPayload(user.getId(),user.getEmail()))
                 .correlationId(correlationId)
