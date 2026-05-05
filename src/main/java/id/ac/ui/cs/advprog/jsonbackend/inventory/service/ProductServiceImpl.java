@@ -9,6 +9,7 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEven
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
@@ -109,10 +110,13 @@ public class ProductServiceImpl implements ProductService {
         if (quantity <= 0) {
             throw new InvalidProductException("Quantity must be greater than zero");
         }
-        Product existing = productRepository.findByIdForUpdate(productId)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
-        existing.reduceStock(quantity);
-        productRepository.save(existing);
+        int updated = productRepository.decrementStockIfEnough(productId, quantity);
+        if (updated == 0) {
+            if (!productRepository.existsById(productId)) {
+                throw new ProductNotFoundException("Product not found with id: " + productId);
+            }
+            throw new InsufficientStockException("Stock is not enough");
+        }
         appendOutboxEvent(InventoryEventType.STOCK_RESERVED, productId, quantity);
     }
 

@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.inventory.repository;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -28,4 +29,14 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") UUID id);
+
+    @Modifying
+    @Query(value = """
+            UPDATE products
+            SET stock = stock - :quantity,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :productId
+              AND stock >= :quantity
+            """, nativeQuery = true)
+    int decrementStockIfEnough(@Param("productId") UUID productId, @Param("quantity") int quantity);
 }
