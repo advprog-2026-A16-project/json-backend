@@ -31,6 +31,9 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
 
     @Override
     public void publish(InventoryOutboxEvent event) {
+        if (event.getCorrelationId() == null || event.getCorrelationId().isBlank()) {
+            throw new NonRetryableInventoryEventException("Invalid inventory event payload");
+        }
         switch (event.getEventType()) {
             case STOCK_RESERVED -> {
                 EventPayload payload = parsePayload(event.getPayload());
