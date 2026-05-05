@@ -133,6 +133,15 @@ class ProductControllerWebMvcTest {
     }
 
     @Test
+    void getAllProductsReturnsBadRequestWhenDirectionInvalid() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("direction", "sideways"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
     void reserveStockReturnsConflictWhenInsufficientStock() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new InsufficientStockException("Insufficient stock"))
