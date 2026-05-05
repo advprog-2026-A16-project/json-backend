@@ -30,12 +30,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
 @Tag(name = "Inventory", description = "Inventory and catalog endpoints")
 public class ProductController {
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "name", "price", "stock", "purchaseDate"
+    );
 
     private final ProductService productService;
 
@@ -53,7 +57,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validatePaginationParams(page, size);
+        validateListParams(page, size, sortBy);
         return productService.findAll(page, size, sortBy, direction);
     }
 
@@ -68,7 +72,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validatePaginationParams(page, size);
+        validateListParams(page, size, sortBy);
         return productService.searchByKeyword(keyword, page, size, sortBy, direction);
     }
 
@@ -86,7 +90,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validatePaginationParams(page, size);
+        validateListParams(page, size, sortBy);
         return productService.findByJastiperId(jastiperId, page, size, sortBy, direction);
     }
 
@@ -173,12 +177,16 @@ public class ProductController {
         return user;
     }
 
-    private void validatePaginationParams(int page, int size) {
+    private void validateListParams(int page, int size, String sortBy) {
         if (page < 0) {
             throw new InvalidProductException("Page must be zero or greater");
         }
         if (size <= 0) {
             throw new InvalidProductException("Size must be greater than zero");
+        }
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
+            throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
         }
     }
 }

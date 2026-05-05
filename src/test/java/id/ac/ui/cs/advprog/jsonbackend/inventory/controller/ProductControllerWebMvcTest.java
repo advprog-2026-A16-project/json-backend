@@ -125,10 +125,6 @@ class ProductControllerWebMvcTest {
 
     @Test
     void getAllProductsReturnsBadRequestWhenSortByInvalid() throws Exception {
-        doThrow(new InvalidProductException("Unsupported sort field: dropTable"))
-                .when(productService)
-                .findAll(0, 20, "dropTable", "desc");
-
         mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
                         .queryParam("sortBy", "dropTable"))
                 .andExpect(status().isBadRequest());
