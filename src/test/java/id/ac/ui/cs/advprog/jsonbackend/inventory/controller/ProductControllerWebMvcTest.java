@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InventoryExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,6 +118,19 @@ class ProductControllerWebMvcTest {
         UUID jastiperId = UUID.randomUUID();
         mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/{jastiperId}", jastiperId)
                         .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenSortByInvalid() throws Exception {
+        doThrow(new InvalidProductException("Unsupported sort field: dropTable"))
+                .when(productService)
+                .findAll(0, 20, "dropTable", "desc");
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("sortBy", "dropTable"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(productService);
