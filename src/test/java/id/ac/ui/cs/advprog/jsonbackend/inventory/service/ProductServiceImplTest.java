@@ -222,33 +222,27 @@ class ProductServiceImplTest {
     @Test
     void reserveStockSuccess() {
         UUID productId = UUID.randomUUID();
-        Product existing = sampleEntity();
-        existing.setStock(10);
-
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
+        when(productRepository.decrementStockIfEnough(productId, 3)).thenReturn(1);
 
         productService.reserveStock(productId, 3);
 
-        assertEquals(7, existing.getStock());
-        verify(productRepository, times(1)).findByIdForUpdate(productId);
-        verify(productRepository, never()).findById(productId);
-        verify(productRepository, times(1)).save(existing);
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 3);
+        verify(productRepository, never()).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
         verify(outboxEventRepository, times(1)).save(org.mockito.ArgumentMatchers.any(InventoryOutboxEvent.class));
     }
 
     @Test
     void reserveStockThrowsWhenInsufficient() {
         UUID productId = UUID.randomUUID();
-        Product existing = sampleEntity();
-        existing.setStock(2);
-
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.decrementStockIfEnough(productId, 3)).thenReturn(0);
+        when(productRepository.existsById(productId)).thenReturn(true);
 
         assertThrows(InsufficientStockException.class, () -> productService.reserveStock(productId, 3));
-        verify(productRepository, times(1)).findByIdForUpdate(productId);
-        verify(productRepository, never()).findById(productId);
-        verify(productRepository, never()).save(existing);
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 3);
+        verify(productRepository, times(1)).existsById(productId);
+        verify(productRepository, never()).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
         verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -273,10 +267,13 @@ class ProductServiceImplTest {
     @Test
     void reserveStockThrowsWhenProductNotFound() {
         UUID productId = UUID.randomUUID();
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.empty());
+        when(productRepository.decrementStockIfEnough(productId, 1)).thenReturn(0);
+        when(productRepository.existsById(productId)).thenReturn(false);
 
         assertThrows(ProductNotFoundException.class, () -> productService.reserveStock(productId, 1));
-        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 1);
+        verify(productRepository, times(1)).existsById(productId);
+        verify(productRepository, never()).findByIdForUpdate(productId);
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
         verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
