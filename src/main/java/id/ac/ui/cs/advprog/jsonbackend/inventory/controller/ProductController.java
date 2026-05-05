@@ -57,7 +57,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validateListParams(page, size, sortBy);
+        validateListParams(page, size, sortBy, direction);
         return productService.findAll(page, size, sortBy, direction);
     }
 
@@ -72,7 +72,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validateListParams(page, size, sortBy);
+        validateListParams(page, size, sortBy, direction);
         return productService.searchByKeyword(keyword, page, size, sortBy, direction);
     }
 
@@ -90,7 +90,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        validateListParams(page, size, sortBy);
+        validateListParams(page, size, sortBy, direction);
         return productService.findByJastiperId(jastiperId, page, size, sortBy, direction);
     }
 
@@ -178,6 +178,10 @@ public class ProductController {
     }
 
     private void validateListParams(int page, int size, String sortBy) {
+        validateListParams(page, size, sortBy, "desc");
+    }
+
+    private void validateListParams(int page, int size, String sortBy, String direction) {
         if (page < 0) {
             throw new InvalidProductException("Page must be zero or greater");
         }
@@ -187,6 +191,10 @@ public class ProductController {
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
         if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
             throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
+        }
+        String safeDirection = (direction == null || direction.isBlank()) ? "desc" : direction;
+        if (!("asc".equalsIgnoreCase(safeDirection) || "desc".equalsIgnoreCase(safeDirection))) {
+            throw new InvalidProductException("Unsupported sort direction: " + safeDirection);
         }
     }
 }
