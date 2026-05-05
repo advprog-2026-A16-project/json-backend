@@ -83,6 +83,46 @@ class ProductControllerWebMvcTest {
     }
 
     @Test
+    void searchProductsReturnsBadRequestWhenPageNegative() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/search")
+                        .queryParam("keyword", "shoe")
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void searchProductsReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/search")
+                        .queryParam("keyword", "shoe")
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProductsByJastiperReturnsBadRequestWhenPageNegative() throws Exception {
+        UUID jastiperId = UUID.randomUUID();
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/{jastiperId}", jastiperId)
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProductsByJastiperReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        UUID jastiperId = UUID.randomUUID();
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/{jastiperId}", jastiperId)
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
     void reserveStockReturnsConflictWhenInsufficientStock() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new InsufficientStockException("Insufficient stock"))
