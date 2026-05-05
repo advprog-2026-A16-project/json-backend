@@ -42,5 +42,19 @@ class InProcessInventoryEventPublisherTest {
         assertThrows(NonRetryableInventoryEventException.class, () -> publisher.publish(event));
         verifyNoInteractions(stockReservationRequestedEventHandler, stockReleaseRequestedEventHandler);
     }
-}
 
+    @Test
+    void publishShouldRejectBlankCorrelationIdAsNonRetryable() {
+        UUID productId = UUID.randomUUID();
+        InventoryOutboxEvent event = InventoryOutboxEvent.builder()
+                .eventId(UUID.randomUUID())
+                .eventType(InventoryEventType.STOCK_RESERVED)
+                .aggregateId(productId)
+                .payload("{\"productId\":\"" + productId + "\",\"quantity\":1}")
+                .correlationId("   ")
+                .build();
+
+        assertThrows(NonRetryableInventoryEventException.class, () -> publisher.publish(event));
+        verifyNoInteractions(stockReservationRequestedEventHandler, stockReleaseRequestedEventHandler);
+    }
+}
