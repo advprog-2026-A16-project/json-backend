@@ -81,7 +81,11 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
         if (!matcher.find()) {
             throw new IllegalArgumentException("Missing quantity");
         }
-        return Integer.parseInt(matcher.group(1));
+        int quantity = Integer.parseInt(matcher.group(1));
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+        return quantity;
     }
 
     private record EventPayload(UUID productId, int quantity) {
