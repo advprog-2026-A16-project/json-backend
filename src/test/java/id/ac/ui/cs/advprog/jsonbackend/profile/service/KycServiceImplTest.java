@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.profile.dto.KycRequest;
 import id.ac.ui.cs.advprog.jsonbackend.profile.model.UserProfile;
 import id.ac.ui.cs.advprog.jsonbackend.profile.repository.UserProfileRepository;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ public class KycServiceImplTest {
     private UserProfileRepository userProfileRepository;
 
     @InjectMocks
-    private UserProfileServiceImpl userProfileService;
+    private KycServiceImpl kycService;
 
     @Test
     void submitKyc_ShouldUpdateAccountStatusToPendingVerification_WhenDataIsValid() {
@@ -43,7 +44,7 @@ public class KycServiceImplTest {
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArguments()[0]);
 
         KycRequest request = new KycRequest("Leon S. Kennedy", "3171234567890123", "https://instagram.com/leon");
-        UserProfile updatedProfile = userProfileService.submitKyc(userId, request);
+        UserProfile updatedProfile = kycService.submitKyc(userId, request);
 
         assertEquals(AccountStatus.PENDING_VERIFICATION, updatedProfile.getUser().getAccountStatus());
         assertEquals("Leon S. Kennedy", updatedProfile.getFullName());
