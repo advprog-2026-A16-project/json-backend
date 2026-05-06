@@ -26,10 +26,21 @@ public class KycServiceImpl implements KycService {
                 .orElseThrow(() -> new UserProfileNotFoundException("Profile tidak ditemukan"));
 
         User user = profile.getUser();
+        if (user.getAccountStatus() == AccountStatus.PENDING_VERIFICATION) {
+            throw new IllegalStateException("Pengajuan KYC sedang diproses");
+        }
+
         user.setAccountStatus(AccountStatus.PENDING_VERIFICATION);
         userRepository.save(user);
 
-        profile.setFullName(request.fullName());
+        if (profile.getFullName() == null || profile.getFullName().isBlank()) {
+            profile.setFullName(request.fullName());
+        }
+
+        profile.setKycFullName(request.fullName());
+        profile.setIdentityNumber(request.identityNumber());
+        profile.setSocialMediaLink(request.socialMediaLink());
+
         return userProfileRepository.save(profile);
     }
 }
