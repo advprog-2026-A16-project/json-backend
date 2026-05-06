@@ -107,7 +107,7 @@ public class KycServiceImpl implements KycService {
 
         user.setAccountStatus(status);
         user.setRole(role);
-        
+
         if (role == Role.TITIPERS) {
             profile.setVerifiedJastiper(false);
         }
