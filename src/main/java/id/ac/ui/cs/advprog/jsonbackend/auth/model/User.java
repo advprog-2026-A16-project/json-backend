@@ -89,9 +89,6 @@ public class User implements UserDetails {
         return getAccountStatus() == AccountStatus.ACTIVE;
     }
 
-    /**
-     * backward compability logic
-     */
     public AccountStatus getAccountStatus() {
         return accountStatus != null ? accountStatus : AccountStatus.ACTIVE;
     }

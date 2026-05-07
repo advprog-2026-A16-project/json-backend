@@ -8,5 +8,9 @@ public record UserRegisteredEvent(
         String email,
         String role,
         String accountStatus,
+        UUID profileId,
+        String username,
+        double rating,
+        int successfulTransactions,
         String correlationId
 ) {}

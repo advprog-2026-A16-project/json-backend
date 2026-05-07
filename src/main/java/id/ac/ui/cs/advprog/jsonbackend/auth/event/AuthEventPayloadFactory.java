@@ -1,21 +1,28 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.event;
 
-import java.util.UUID;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
 
-public final class AuthEventPayloadFactory {
-    private AuthEventPayloadFactory() {
-    }
+public class AuthEventPayloadFactory {
 
-    public static String userRegisteredPayload(
-            UUID userId,
-            String email,
-            String role,
-            String accountStatus
-    ) {
-        return "{\"userId\":\"" + userId +
-                "\",\"email\":\"" + email +
-                "\",\"role\":\"" + role +
-                "\",\"accountStatus\":\"" + accountStatus +
-                "\"}";
+    public static String userRegisteredPayload(User user, UserProfile profile) {
+        return String.format(
+                "{\"userId\":\"%s\"," +
+                        "\"email\":\"%s\"," +
+                        "\"role\":\"%s\"," +
+                        "\"accountStatus\":\"%s\"," +
+                        "\"profileId\":\"%s\"," +
+                        "\"username\":\"%s\"," +
+                        "\"rating\":%f," +
+                        "\"successfulTransactions\":%d}",
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getAccountStatus().name(),
+                profile.getId(),
+                profile.getUsername(),
+                profile.getRating(),
+                profile.getSuccessfulTransactions()
+        );
     }
 }

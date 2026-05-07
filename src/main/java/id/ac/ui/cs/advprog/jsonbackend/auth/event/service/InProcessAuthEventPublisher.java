@@ -17,6 +17,10 @@ public class InProcessAuthEventPublisher implements AuthEventPublisher {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("\"email\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern ROLE_PATTERN = Pattern.compile("\"role\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern ACCOUNT_STATUS_PATTERN = Pattern.compile("\"accountStatus\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern PROFILE_ID_PATTERN = Pattern.compile("\"profileId\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("\"username\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern RATING_PATTERN = Pattern.compile("\"rating\"\\s*:\\s*([0-9.]+)");
+    private static final Pattern TRANSACTIONS_PATTERN = Pattern.compile("\"successfulTransactions\"\\s*:\\s*([0-9]+)");
 
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -31,6 +35,10 @@ public class InProcessAuthEventPublisher implements AuthEventPublisher {
             String email = extractEmail(event.getPayload());
             String role = extractRole(event.getPayload());
             String accountStatus = extractAccountStatus(event.getPayload());
+            UUID profileId = extractProfileId(event.getPayload());
+            String username = extractUsername(event.getPayload());
+            double rating = extractRating(event.getPayload());
+            int successfulTransactions = extractSuccessfulTransactions(event.getPayload());
 
             UserRegisteredEvent userRegisteredEvent = new UserRegisteredEvent(
                     event.getEventId(),
@@ -38,6 +46,10 @@ public class InProcessAuthEventPublisher implements AuthEventPublisher {
                     email,
                     role,
                     accountStatus,
+                    profileId,
+                    username,
+                    rating,
+                    successfulTransactions,
                     event.getCorrelationId()
             );
 
@@ -69,5 +81,29 @@ public class InProcessAuthEventPublisher implements AuthEventPublisher {
         Matcher matcher = ACCOUNT_STATUS_PATTERN.matcher(payload);
         if (!matcher.find()) throw new IllegalArgumentException("Missing accountStatus");
         return matcher.group(1);
+    }
+
+    private UUID extractProfileId(String payload) {
+        Matcher matcher = PROFILE_ID_PATTERN.matcher(payload);
+        if (!matcher.find()) throw new IllegalArgumentException("Missing profileId");
+        return UUID.fromString(matcher.group(1));
+    }
+
+    private String extractUsername(String payload) {
+        Matcher matcher = USERNAME_PATTERN.matcher(payload);
+        if (!matcher.find()) throw new IllegalArgumentException("Missing username");
+        return matcher.group(1);
+    }
+
+    private double extractRating(String payload) {
+        Matcher matcher = RATING_PATTERN.matcher(payload);
+        if (!matcher.find()) throw new IllegalArgumentException("Missing rating");
+        return Double.parseDouble(matcher.group(1));
+    }
+
+    private int extractSuccessfulTransactions(String payload) {
+        Matcher matcher = TRANSACTIONS_PATTERN.matcher(payload);
+        if (!matcher.find()) throw new IllegalArgumentException("Missing successfulTransactions");
+        return Integer.parseInt(matcher.group(1));
     }
 }
