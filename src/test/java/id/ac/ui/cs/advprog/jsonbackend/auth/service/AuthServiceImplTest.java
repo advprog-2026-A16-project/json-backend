@@ -11,6 +11,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,13 +20,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,10 +37,16 @@ class AuthServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserProfileRepository userProfileRepository;
+
     @Mock
     private PasswordEncoder passwordEncoder;
+
     @Mock
     private JwtService jwtService;
+
     @Mock
     private AuthenticationManager authenticationManager;
 
@@ -54,6 +61,7 @@ class AuthServiceImplTest {
     @BeforeEach
     void setUp() {
         user = new User("test@email.com", "encodedPassword", Role.TITIPERS);
+        user.setId(UUID.randomUUID());
     }
 
     @Test
@@ -61,6 +69,19 @@ class AuthServiceImplTest {
         RegisterRequest request = new RegisterRequest("test@email.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
+
+        doAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        }).when(userRepository).save(any(User.class));
+
+        doAnswer(invocation -> {
+            UserProfile p = invocation.getArgument(0);
+            p.setId(UUID.randomUUID());
+            return p;
+        }).when(userProfileRepository).save(any(UserProfile.class));
+
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         AuthResponse response = authService.register(request);
@@ -69,6 +90,7 @@ class AuthServiceImplTest {
         assertEquals("jwt-token", response.token());
 
         verify(userRepository).save(any(User.class));
+        verify(userProfileRepository).save(any(UserProfile.class));
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
@@ -79,6 +101,7 @@ class AuthServiceImplTest {
         assertThrows(PasswordMismatchException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
+        verify(userProfileRepository, never()).save(any(UserProfile.class));
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -90,6 +113,7 @@ class AuthServiceImplTest {
         assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
+        verify(userProfileRepository, never()).save(any(UserProfile.class));
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -98,11 +122,25 @@ class AuthServiceImplTest {
         RegisterRequest request = new RegisterRequest("test@email.com", "password", "password");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
+
+        doAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        }).when(userRepository).save(any(User.class));
+
+        doAnswer(invocation -> {
+            UserProfile p = invocation.getArgument(0);
+            p.setId(UUID.randomUUID());
+            return p;
+        }).when(userProfileRepository).save(any(UserProfile.class));
+
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         authService.register(request);
 
         verify(userRepository).save(argThat(savedUser -> savedUser.getRole() == Role.TITIPERS));
+        verify(userProfileRepository).save(any(UserProfile.class));
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
