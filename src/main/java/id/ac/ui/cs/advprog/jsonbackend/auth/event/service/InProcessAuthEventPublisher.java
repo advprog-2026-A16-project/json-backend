@@ -2,7 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.event.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.enums.AuthEventType;
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.model.AuthOutboxEvent;
-import id.ac.ui.cs.advprog.jsonbackend.shared.event.UserRegisteredEvent;
+import id.ac.ui.cs.advprog.jsonbackend.auth.event.UserRegisteredEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
