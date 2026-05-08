@@ -41,11 +41,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             user.setRole(role);
         }
 
-        if (role == Role.TITIPERS) {
-            profile.setVerifiedJastiper(false);
-        }
-
         userRepository.save(user);
-        return profileRepository.save(profile);
+        return profile;
     }
 }

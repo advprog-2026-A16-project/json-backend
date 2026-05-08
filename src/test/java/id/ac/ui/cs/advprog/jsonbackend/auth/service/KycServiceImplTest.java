@@ -1,12 +1,14 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.KycStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.KycSubmission;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.KycSubmissionRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,8 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -30,24 +31,64 @@ public class KycServiceImplTest {
     @Mock
     private ProfileRepository profileRepository;
 
+    @Mock
+    private KycSubmissionRepository kycRepository;
+
     @InjectMocks
     private KycServiceImpl kycService;
 
     @Test
-    void submitKyc_ShouldUpdateAccountStatusToPendingVerification_WhenDataIsValid() {
+    void submitKyc_ShouldUpdateAccountStatusAndCreateSubmission_WhenDataIsValid() {
         UUID userId = UUID.randomUUID();
-        User user = User.builder().id(userId).email("user@email.com").role(Role.TITIPERS).accountStatus(AccountStatus.ACTIVE).build();
-        Profile existingProfile = Profile.builder().user(user).username("user").build();
+        User user = User.builder()
+                .id(userId)
+                .email("user@email.com")
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existingProfile));
-        when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(kycRepository.save(any(KycSubmission.class))).thenAnswer(i -> i.getArguments()[0]);
 
         KycRequest request = new KycRequest("Leon S. Kennedy", "3171234567890123", "https://instagram.com/leon");
-        Profile updatedProfile = kycService.submitKyc(userId, request);
 
-        assertEquals(AccountStatus.PENDING_VERIFICATION, updatedProfile.getUser().getAccountStatus());
-        assertEquals("Leon S. Kennedy", updatedProfile.getFullName());
+        KycSubmission submission = kycService.submitKyc(userId, request);
+
+        // Assertions
+        assertNotNull(submission);
+        assertEquals(AccountStatus.PENDING_VERIFICATION, user.getAccountStatus());
+        assertEquals(user, submission.getUser());
+        assertEquals("Leon S. Kennedy", submission.getKycFullName());
+        assertEquals("3171234567890123", submission.getIdentityNumber());
+        assertEquals("https://instagram.com/leon", submission.getSocialMediaLink());
+        assertEquals(KycStatus.REQUESTED, submission.getStatus());
+        assertNotNull(submission.getSubmittedAt());
+
         verify(userRepository, times(1)).save(any(User.class));
+        verify(kycRepository, times(1)).save(any(KycSubmission.class));
+        verify(profileRepository, never()).save(any());
+    }
+
+    @Test
+    void submitKyc_ShouldThrowException_WhenUserAlreadyPendingVerification() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .email("user@email.com")
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.PENDING_VERIFICATION)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        KycRequest request = new KycRequest("Leon S. Kennedy", "3171234567890123", "https://instagram.com/leon");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> kycService.submitKyc(userId, request));
+
+        assertEquals("Pengajuan KYC sedang diproses", exception.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+        verify(kycRepository, never()).save(any(KycSubmission.class));
     }
 }

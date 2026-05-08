@@ -1,13 +1,10 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
-import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ProfileResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.service.KycService;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.ProfileService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 public class ProfileController {
 
     private final ProfileService profileService;
-    private final KycService kycService;
 
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getMyProfile(@AuthenticationPrincipal User user) {
@@ -38,14 +34,6 @@ public class ProfileController {
                 request.fullName(),
                 request.bio()
         );
-        return ResponseEntity.ok(ProfileResponse.from(updated));
-    }
-
-    @PostMapping("/kyc")
-    public ResponseEntity<ProfileResponse> submitKyc(
-            @AuthenticationPrincipal User user,
-            @Valid @RequestBody KycRequest request) {
-        Profile updated = kycService.submitKyc(user.getId(), request);
         return ResponseEntity.ok(ProfileResponse.from(updated));
     }
 }

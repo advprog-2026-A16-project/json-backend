@@ -12,11 +12,7 @@ public record AdminUserResponse(
         Role role,
         AccountStatus accountStatus,
         String username,
-        String fullName,
-        String kycFullName,
-        String identityNumber,
-        String socialMediaLink,
-        boolean isVerifiedJastiper
+        String fullName
 ) {
     public static AdminUserResponse from(Profile profile) {
         return new AdminUserResponse(
@@ -25,11 +21,7 @@ public record AdminUserResponse(
                 profile.getUser().getRole(),
                 profile.getUser().getAccountStatus(),
                 profile.getUsername(),
-                profile.getFullName(),
-                profile.getKycFullName(),
-                profile.getIdentityNumber(),
-                profile.getSocialMediaLink(),
-                profile.isVerifiedJastiper()
+                profile.getFullName()
         );
     }
 }

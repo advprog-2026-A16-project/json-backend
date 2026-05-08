@@ -24,7 +24,6 @@ public class ProfileTest {
         assertEquals("budi", profile.getUsername());
         assertEquals("Budi Budiman", profile.getFullName());
         assertEquals("ini bio", profile.getBio());
-        assertFalse(profile.isVerifiedJastiper());
         assertEquals(0, profile.getSuccessfulTransactions());
         assertEquals(0.0, profile.getRating());
 

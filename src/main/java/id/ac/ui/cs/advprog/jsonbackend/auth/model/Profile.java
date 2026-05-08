@@ -32,22 +32,10 @@ public class Profile {
     private String bio;
 
     @Builder.Default
-    private boolean isVerifiedJastiper = false;
-
-    @Builder.Default
     private int successfulTransactions = 0;
 
     @Builder.Default
     private double rating = 0.0;
-
-    @Column(name = "kyc_full_name")
-    private String kycFullName;
-
-    @Column(name = "identity_number", length = 50)
-    private String identityNumber;
-
-    @Column(name = "social_media_link")
-    private String socialMediaLink;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

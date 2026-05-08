@@ -12,7 +12,6 @@ public record ProfileResponse(
         String fullName,
         String bio,
         Role role,
-        boolean isVerifiedJastiper,
         Integer successfulTransactions,
         Double rating
 ) {
@@ -24,7 +23,6 @@ public record ProfileResponse(
                 profile.getFullName(),
                 profile.getBio(),
                 profile.getUser().getRole(),
-                profile.isVerifiedJastiper(),
                 profile.getSuccessfulTransactions(),
                 profile.getRating()
         );
