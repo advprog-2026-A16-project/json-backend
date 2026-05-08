@@ -9,4 +9,5 @@ public interface ProfileService {
     Profile createProfileForUser(User user, String requestedUsername);
     Profile getProfileByUserId(UUID userId);
     Profile updateProfile(UUID userId, String username, String fullName, String bio);
+    void recordSuccessfulTransaction(UUID userId, Double rating);
 }
