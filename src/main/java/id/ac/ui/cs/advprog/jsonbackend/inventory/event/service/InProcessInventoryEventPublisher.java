@@ -36,15 +36,8 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
         }
         switch (event.getEventType()) {
             case STOCK_RESERVED -> {
-                EventPayload payload = parsePayload(event.getPayload());
-                stockReservationRequestedEventHandler.handle(
-                        new StockReservationRequestedEvent(
-                                event.getEventId(),
-                                payload.productId(),
-                                payload.quantity(),
-                                event.getCorrelationId()
-                        )
-                );
+                // STOCK_RESERVED is an inventory-domain output event.
+                // It should not trigger stock mutation again in this module.
             }
             case STOCK_RELEASED -> {
                 EventPayload payload = parsePayload(event.getPayload());
