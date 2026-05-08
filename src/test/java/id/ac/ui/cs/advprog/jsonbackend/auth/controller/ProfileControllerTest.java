@@ -2,8 +2,8 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.service.ProfileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,30 +21,30 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
-class UserProfileControllerTest {
+class ProfileControllerTest {
 
     @Mock
-    private UserProfileService userProfileService;
+    private ProfileService profileService;
 
     @InjectMocks
-    private UserProfileController userProfileController;
+    private ProfileController profileController;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(userProfileController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(profileController).build();
     }
 
     @Test
     @WithMockUser(username = "test@email.com")
     void whenGetMyProfile_shouldReturnProfileData() throws Exception {
-        UserProfile mockProfile = UserProfile.builder()
+        Profile mockProfile = Profile.builder()
                 .username("test")
                 .user(User.builder().email("test@email.com").role(Role.TITIPERS).build())
                 .build();
 
-        when(userProfileService.getProfileByUserId(any())).thenReturn(mockProfile);
+        when(profileService.getProfileByUserId(any())).thenReturn(mockProfile);
 
         mockMvc.perform(get("/api/profile/me")
                         .principal(() -> "test@email.com"))

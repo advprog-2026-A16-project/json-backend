@@ -3,10 +3,10 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UpdateProfileRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UserProfileResponse;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ProfileResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.KycService;
-import id.ac.ui.cs.advprog.jsonbackend.auth.service.UserProfileService;
+import id.ac.ui.cs.advprog.jsonbackend.auth.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,23 +16,23 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
-public class UserProfileController {
+public class ProfileController {
 
-    private final UserProfileService userProfileService;
+    private final ProfileService profileService;
     private final KycService kycService;
 
     @GetMapping("/me")
-    public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal User user) {
-        UserProfile profile = userProfileService.getProfileByUserId(user.getId());
+    public ResponseEntity<ProfileResponse> getMyProfile(@AuthenticationPrincipal User user) {
+        Profile profile = profileService.getProfileByUserId(user.getId());
         return ResponseEntity.ok(convertToResponse(profile));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<UserProfileResponse> updateProfile(
+    public ResponseEntity<ProfileResponse> updateProfile(
             @AuthenticationPrincipal User user,
             @RequestBody UpdateProfileRequest request) {
 
-        UserProfile updated = userProfileService.updateProfile(
+        Profile updated = profileService.updateProfile(
                 user.getId(),
                 request.username(),
                 request.fullName(),
@@ -41,8 +41,8 @@ public class UserProfileController {
         return ResponseEntity.ok(convertToResponse(updated));
     }
 
-    private UserProfileResponse convertToResponse(UserProfile profile) {
-        return new UserProfileResponse(
+    private ProfileResponse convertToResponse(Profile profile) {
+        return new ProfileResponse(
                 profile.getId(),
                 profile.getUser().getEmail(),
                 profile.getUsername(),
@@ -56,10 +56,10 @@ public class UserProfileController {
     }
 
     @PostMapping("/kyc")
-    public ResponseEntity<UserProfileResponse> submitKyc(
+    public ResponseEntity<ProfileResponse> submitKyc(
             @AuthenticationPrincipal User user,
             @Valid @RequestBody KycRequest request) {
-        UserProfile updated = kycService.submitKyc(user.getId(), request);
+        Profile updated = kycService.submitKyc(user.getId(), request);
         return ResponseEntity.ok(convertToResponse(updated));
     }
 }

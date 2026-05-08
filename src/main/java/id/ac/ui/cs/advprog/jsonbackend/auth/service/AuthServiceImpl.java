@@ -14,9 +14,9 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,20 +29,20 @@ import java.util.UUID;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuthOutboxEventRepository outboxEventRepository;
 
     public AuthServiceImpl(UserRepository userRepository,
-                           UserProfileRepository userProfileRepository,
+                           ProfileRepository profileRepository,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
                            AuthenticationManager authenticationManager,
                            AuthOutboxEventRepository outboxEventRepository) {
         this.userRepository = userRepository;
-        this.userProfileRepository = userProfileRepository;
+        this.profileRepository = profileRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
@@ -62,11 +62,11 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String generatedUsername = user.getEmail().split("@")[0];
-        UserProfile profile = UserProfile.builder()
+        Profile profile = Profile.builder()
                 .user(user)
                 .username(generatedUsername)
                 .build();
-        userProfileRepository.save(profile);
+        profileRepository.save(profile);
 
         UUID eventId = UUID.randomUUID();
         String correlationId = UUID.randomUUID().toString();

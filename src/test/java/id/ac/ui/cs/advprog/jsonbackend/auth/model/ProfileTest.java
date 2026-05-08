@@ -7,12 +7,12 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class UserProfileTest {
+public class ProfileTest {
     @Test
     void testUserProfileCreation() {
         User user = User.builder().email("test@email.com").build();
 
-        UserProfile profile = UserProfile.builder()
+        Profile profile = Profile.builder()
                 .user(user)
                 .username("budi")
                 .fullName("Budi Budiman")

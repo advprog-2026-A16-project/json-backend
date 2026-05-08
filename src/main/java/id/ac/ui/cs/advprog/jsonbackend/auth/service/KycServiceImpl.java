@@ -5,9 +5,9 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserProfileNotFoundException;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,13 +19,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class KycServiceImpl implements KycService {
     private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final ProfileRepository profileRepository;
 
     @Override
     @Transactional
-    public UserProfile submitKyc(UUID userId, KycRequest request) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile tidak ditemukan"));
+    public Profile submitKyc(UUID userId, KycRequest request) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ProfileNotFoundException("Profile tidak ditemukan"));
 
         User user = profile.getUser();
         if (user.getAccountStatus() == AccountStatus.PENDING_VERIFICATION) {
@@ -43,26 +43,26 @@ public class KycServiceImpl implements KycService {
         profile.setIdentityNumber(request.identityNumber());
         profile.setSocialMediaLink(request.socialMediaLink());
 
-        return userProfileRepository.save(profile);
+        return profileRepository.save(profile);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserProfile> getPendingKycList() {
-        return userProfileRepository.findAllByUserAccountStatus(AccountStatus.PENDING_VERIFICATION);
+    public List<Profile> getPendingKycList() {
+        return profileRepository.findAllByUserAccountStatus(AccountStatus.PENDING_VERIFICATION);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserProfile> getAllUsers() {
-        return userProfileRepository.findAll();
+    public List<Profile> getAllUsers() {
+        return profileRepository.findAll();
     }
 
     @Override
     @Transactional
-    public UserProfile approveKyc(UUID userId) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile tidak ditemukan"));
+    public Profile approveKyc(UUID userId) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ProfileNotFoundException("Profile tidak ditemukan"));
         User user = profile.getUser();
 
         if (user.getAccountStatus() != AccountStatus.PENDING_VERIFICATION) {
@@ -74,14 +74,14 @@ public class KycServiceImpl implements KycService {
         userRepository.save(user);
 
         profile.setVerifiedJastiper(true);
-        return userProfileRepository.save(profile);
+        return profileRepository.save(profile);
     }
 
     @Override
     @Transactional
-    public UserProfile rejectKyc(UUID userId) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile tidak ditemukan"));
+    public Profile rejectKyc(UUID userId) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ProfileNotFoundException("Profile tidak ditemukan"));
         User user = profile.getUser();
 
         if (user.getAccountStatus() != AccountStatus.PENDING_VERIFICATION) {
@@ -95,14 +95,14 @@ public class KycServiceImpl implements KycService {
         profile.setIdentityNumber(null);
         profile.setSocialMediaLink(null);
 
-        return userProfileRepository.save(profile);
+        return profileRepository.save(profile);
     }
 
     @Override
     @Transactional
-    public UserProfile updateUserStatus(UUID userId, AccountStatus status, Role role) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile tidak ditemukan"));
+    public Profile updateUserStatus(UUID userId, AccountStatus status, Role role) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ProfileNotFoundException("Profile tidak ditemukan"));
         User user = profile.getUser();
 
         user.setAccountStatus(status);
@@ -113,6 +113,6 @@ public class KycServiceImpl implements KycService {
         }
 
         userRepository.save(user);
-        return userProfileRepository.save(profile);
+        return profileRepository.save(profile);
     }
 }

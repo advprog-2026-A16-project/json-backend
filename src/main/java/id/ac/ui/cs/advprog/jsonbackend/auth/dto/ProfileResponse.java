@@ -3,7 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.dto;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import java.util.UUID;
 
-public record UserProfileResponse(
+public record ProfileResponse(
         UUID profileId,
         String email,
         String username,

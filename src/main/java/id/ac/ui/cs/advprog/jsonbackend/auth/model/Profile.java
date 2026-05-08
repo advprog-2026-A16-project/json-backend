@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(name = "user_profiles")
-public class UserProfile {
+public class Profile {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;

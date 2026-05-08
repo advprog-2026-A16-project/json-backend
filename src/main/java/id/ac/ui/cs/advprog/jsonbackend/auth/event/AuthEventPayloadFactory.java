@@ -1,11 +1,11 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.event;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 
 public class AuthEventPayloadFactory {
 
-    public static String userRegisteredPayload(User user, UserProfile profile) {
+    public static String userRegisteredPayload(User user, Profile profile) {
         return String.format(
                 "{\"userId\":\"%s\"," +
                         "\"email\":\"%s\"," +

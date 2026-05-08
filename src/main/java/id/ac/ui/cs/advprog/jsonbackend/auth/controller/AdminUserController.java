@@ -2,7 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AdminUserResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UserStatusUpdateRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.KycService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,13 +43,13 @@ public class AdminUserController {
 
     @PutMapping("/users/{id}/kyc/approve")
     public ResponseEntity<AdminUserResponse> approveKyc(@PathVariable UUID id) {
-        UserProfile approvedProfile = kycService.approveKyc(id);
+        Profile approvedProfile = kycService.approveKyc(id);
         return ResponseEntity.ok(convertToAdminResponse(approvedProfile));
     }
 
     @PutMapping("/users/{id}/kyc/reject")
     public ResponseEntity<AdminUserResponse> rejectKyc(@PathVariable UUID id) {
-        UserProfile rejectedProfile = kycService.rejectKyc(id);
+        Profile rejectedProfile = kycService.rejectKyc(id);
         return ResponseEntity.ok(convertToAdminResponse(rejectedProfile));
     }
 
@@ -58,11 +58,11 @@ public class AdminUserController {
             @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateRequest request) {
 
-        UserProfile updatedProfile = kycService.updateUserStatus(id, request.accountStatus(), request.role());
+        Profile updatedProfile = kycService.updateUserStatus(id, request.accountStatus(), request.role());
         return ResponseEntity.ok(convertToAdminResponse(updatedProfile));
     }
 
-    private AdminUserResponse convertToAdminResponse(UserProfile profile) {
+    private AdminUserResponse convertToAdminResponse(Profile profile) {
         return new AdminUserResponse(
                 profile.getUser().getId(),
                 profile.getUser().getEmail(),

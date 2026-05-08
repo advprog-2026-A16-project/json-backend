@@ -11,8 +11,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.AccountBannedException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class AuthServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private ProfileRepository profileRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -77,10 +77,10 @@ class AuthServiceImplTest {
         }).when(userRepository).save(any(User.class));
 
         doAnswer(invocation -> {
-            UserProfile p = invocation.getArgument(0);
+            Profile p = invocation.getArgument(0);
             p.setId(UUID.randomUUID());
             return p;
-        }).when(userProfileRepository).save(any(UserProfile.class));
+        }).when(profileRepository).save(any(Profile.class));
 
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
@@ -90,7 +90,7 @@ class AuthServiceImplTest {
         assertEquals("jwt-token", response.token());
 
         verify(userRepository).save(any(User.class));
-        verify(userProfileRepository).save(any(UserProfile.class));
+        verify(profileRepository).save(any(Profile.class));
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
@@ -101,7 +101,7 @@ class AuthServiceImplTest {
         assertThrows(PasswordMismatchException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
-        verify(userProfileRepository, never()).save(any(UserProfile.class));
+        verify(profileRepository, never()).save(any(Profile.class));
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -113,7 +113,7 @@ class AuthServiceImplTest {
         assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
-        verify(userProfileRepository, never()).save(any(UserProfile.class));
+        verify(profileRepository, never()).save(any(Profile.class));
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -130,17 +130,17 @@ class AuthServiceImplTest {
         }).when(userRepository).save(any(User.class));
 
         doAnswer(invocation -> {
-            UserProfile p = invocation.getArgument(0);
+            Profile p = invocation.getArgument(0);
             p.setId(UUID.randomUUID());
             return p;
-        }).when(userProfileRepository).save(any(UserProfile.class));
+        }).when(profileRepository).save(any(Profile.class));
 
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         authService.register(request);
 
         verify(userRepository).save(argThat(savedUser -> savedUser.getRole() == Role.TITIPERS));
-        verify(userProfileRepository).save(any(UserProfile.class));
+        verify(profileRepository).save(any(Profile.class));
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 

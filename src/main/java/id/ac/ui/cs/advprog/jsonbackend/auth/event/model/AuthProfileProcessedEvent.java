@@ -15,7 +15,7 @@ import java.util.UUID;
         name = "user_profile_processed_events",
         uniqueConstraints = @UniqueConstraint(name = "uk_profile_processed_event", columnNames = {"event_id", "handler_name"})
 )
-public class UserProfileProcessedEvent {
+public class AuthProfileProcessedEvent {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

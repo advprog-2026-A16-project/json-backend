@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.UserProfile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,21 +17,21 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
-public class UserProfileServiceImplTest {
+public class ProfileServiceImplTest {
 
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private ProfileRepository profileRepository;
 
     @InjectMocks
-    private UserProfileServiceImpl userProfileService;
+    private ProfileServiceImpl userProfileService;
 
     @Test
     void whenCreateProfileWithoutUsername_shouldExtractFromEmail() {
         User user = User.builder().email("leon@email.com").build();
 
-        when(userProfileRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
+        when(profileRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
-        UserProfile result = userProfileService.createProfileForUser(user, null);
+        Profile result = userProfileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
     }
@@ -39,12 +39,12 @@ public class UserProfileServiceImplTest {
     @Test
     void updateProfile_ShouldUpdateFields_WhenValidDataProvided() {
         UUID userId = UUID.randomUUID();
-        UserProfile existing = UserProfile.builder().username("old").build();
+        Profile existing = Profile.builder().username("old").build();
 
-        when(userProfileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
-        when(userProfileRepository.save(any(UserProfile.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+        when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        UserProfile updated = userProfileService.updateProfile(
+        Profile updated = userProfileService.updateProfile(
                 userId,
                 "new_username",
                 "Leon Kennedy",
