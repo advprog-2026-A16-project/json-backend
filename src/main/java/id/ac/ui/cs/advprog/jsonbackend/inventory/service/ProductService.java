@@ -9,10 +9,13 @@ import java.util.UUID;
 
 public interface ProductService {
     List<ProductResponse> findAll();
+    List<ProductResponse> findAll(int page, int size, String sortBy, String direction);
 
     List<ProductResponse> searchByKeyword(String keyword);
+    List<ProductResponse> searchByKeyword(String keyword, int page, int size, String sortBy, String direction);
 
     List<ProductResponse> findByJastiperId(UUID jastiperId);
+    List<ProductResponse> findByJastiperId(UUID jastiperId, int page, int size, String sortBy, String direction);
 
     void reserveStock(UUID productId, int quantity);
 

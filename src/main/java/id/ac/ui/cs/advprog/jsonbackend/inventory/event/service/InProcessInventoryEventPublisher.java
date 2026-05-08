@@ -31,17 +31,13 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
 
     @Override
     public void publish(InventoryOutboxEvent event) {
+        if (event.getCorrelationId() == null || event.getCorrelationId().isBlank()) {
+            throw new NonRetryableInventoryEventException("Invalid inventory event payload");
+        }
         switch (event.getEventType()) {
             case STOCK_RESERVED -> {
-                EventPayload payload = parsePayload(event.getPayload());
-                stockReservationRequestedEventHandler.handle(
-                        new StockReservationRequestedEvent(
-                                event.getEventId(),
-                                payload.productId(),
-                                payload.quantity(),
-                                event.getCorrelationId()
-                        )
-                );
+                // STOCK_RESERVED is an inventory-domain output event.
+                // It should not trigger stock mutation again in this module.
             }
             case STOCK_RELEASED -> {
                 EventPayload payload = parsePayload(event.getPayload());
@@ -81,7 +77,11 @@ public class InProcessInventoryEventPublisher implements InventoryEventPublisher
         if (!matcher.find()) {
             throw new IllegalArgumentException("Missing quantity");
         }
-        return Integer.parseInt(matcher.group(1));
+        int quantity = Integer.parseInt(matcher.group(1));
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+        return quantity;
     }
 
     private record EventPayload(UUID productId, int quantity) {

@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InventoryExceptionHandler;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.UUID;
 
@@ -59,6 +61,82 @@ class ProductControllerWebMvcTest {
                         .queryParam("quantity", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Quantity must be greater than zero"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenPageNegative() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void searchProductsReturnsBadRequestWhenPageNegative() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/search")
+                        .queryParam("keyword", "shoe")
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void searchProductsReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/search")
+                        .queryParam("keyword", "shoe")
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProductsByJastiperReturnsBadRequestWhenPageNegative() throws Exception {
+        UUID jastiperId = UUID.randomUUID();
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/{jastiperId}", jastiperId)
+                        .queryParam("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProductsByJastiperReturnsBadRequestWhenSizeNonPositive() throws Exception {
+        UUID jastiperId = UUID.randomUUID();
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/{jastiperId}", jastiperId)
+                        .queryParam("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenSortByInvalid() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("sortBy", "dropTable"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getAllProductsReturnsBadRequestWhenDirectionInvalid() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products")
+                        .queryParam("direction", "sideways"))
+                .andExpect(status().isBadRequest());
 
         verifyNoInteractions(productService);
     }
