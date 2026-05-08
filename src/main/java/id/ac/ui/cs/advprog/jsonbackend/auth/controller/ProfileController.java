@@ -24,7 +24,7 @@ public class ProfileController {
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getMyProfile(@AuthenticationPrincipal User user) {
         Profile profile = profileService.getProfileByUserId(user.getId());
-        return ResponseEntity.ok(convertToResponse(profile));
+        return ResponseEntity.ok(ProfileResponse.from(profile));
     }
 
     @PutMapping("/me")
@@ -38,21 +38,7 @@ public class ProfileController {
                 request.fullName(),
                 request.bio()
         );
-        return ResponseEntity.ok(convertToResponse(updated));
-    }
-
-    private ProfileResponse convertToResponse(Profile profile) {
-        return new ProfileResponse(
-                profile.getId(),
-                profile.getUser().getEmail(),
-                profile.getUsername(),
-                profile.getFullName(),
-                profile.getBio(),
-                profile.getUser().getRole(),
-                profile.isVerifiedJastiper(),
-                profile.getSuccessfulTransactions(),
-                profile.getRating()
-        );
+        return ResponseEntity.ok(ProfileResponse.from(updated));
     }
 
     @PostMapping("/kyc")
@@ -60,6 +46,6 @@ public class ProfileController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody KycRequest request) {
         Profile updated = kycService.submitKyc(user.getId(), request);
-        return ResponseEntity.ok(convertToResponse(updated));
+        return ResponseEntity.ok(ProfileResponse.from(updated));
     }
 }
