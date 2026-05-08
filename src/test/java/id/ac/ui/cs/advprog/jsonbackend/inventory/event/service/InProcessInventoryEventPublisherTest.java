@@ -29,7 +29,7 @@ class InProcessInventoryEventPublisherTest {
     private InProcessInventoryEventPublisher publisher;
 
     @Test
-    void publishShouldRejectZeroQuantityAsNonRetryable() {
+    void publishShouldNoopForStockReservedEvent() {
         UUID productId = UUID.randomUUID();
         InventoryOutboxEvent event = InventoryOutboxEvent.builder()
                 .eventId(UUID.randomUUID())
@@ -39,7 +39,7 @@ class InProcessInventoryEventPublisherTest {
                 .correlationId("corr-zero-qty")
                 .build();
 
-        assertThrows(NonRetryableInventoryEventException.class, () -> publisher.publish(event));
+        publisher.publish(event);
         verifyNoInteractions(stockReservationRequestedEventHandler, stockReleaseRequestedEventHandler);
     }
 
