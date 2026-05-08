@@ -16,7 +16,6 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,20 +28,20 @@ import java.util.UUID;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final ProfileRepository profileRepository;
+    private final ProfileService profileService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuthOutboxEventRepository outboxEventRepository;
 
     public AuthServiceImpl(UserRepository userRepository,
-                           ProfileRepository profileRepository,
+                           ProfileService profileService,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
                            AuthenticationManager authenticationManager,
                            AuthOutboxEventRepository outboxEventRepository) {
         this.userRepository = userRepository;
-        this.profileRepository = profileRepository;
+        this.profileService = profileService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
@@ -62,11 +61,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String generatedUsername = user.getEmail().split("@")[0];
-        Profile profile = Profile.builder()
-                .user(user)
-                .username(generatedUsername)
-                .build();
-        profileRepository.save(profile);
+        Profile profile = profileService.createProfileForUser(user, generatedUsername);
 
         UUID eventId = UUID.randomUUID();
         String correlationId = UUID.randomUUID().toString();
@@ -87,6 +82,7 @@ public class AuthServiceImpl implements AuthService {
         return new AuthResponse(jwtToken, "Registration successful");
     }
 
+    @Override
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(UserNotFoundException::new);
