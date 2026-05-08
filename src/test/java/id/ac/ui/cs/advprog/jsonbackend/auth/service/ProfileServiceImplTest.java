@@ -13,10 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ProfileServiceImplTest {
@@ -25,7 +24,7 @@ public class ProfileServiceImplTest {
     private ProfileRepository profileRepository;
 
     @InjectMocks
-    private ProfileServiceImpl userProfileService;
+    private ProfileServiceImpl profileService;
 
     @Test
     void whenCreateProfileWithoutUsername_shouldExtractFromEmail() {
@@ -33,7 +32,7 @@ public class ProfileServiceImplTest {
 
         when(profileRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
-        Profile result = userProfileService.createProfileForUser(user, null);
+        Profile result = profileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
     }
@@ -46,7 +45,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
         when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Profile updated = userProfileService.updateProfile(
+        Profile updated = profileService.updateProfile(
                 userId,
                 "new_username",
                 "Leon Kennedy",
@@ -63,7 +62,7 @@ public class ProfileServiceImplTest {
 
         when(profileRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
-        Profile result = userProfileService.createProfileForUser(user, "custom_username");
+        Profile result = profileService.createProfileForUser(user, "custom_username");
 
         assertEquals("custom_username", result.getUsername());
     }
@@ -79,7 +78,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.findByUserId(userId))
                 .thenReturn(Optional.of(profile));
 
-        Profile result = userProfileService.getProfileByUserId(userId);
+        Profile result = profileService.getProfileByUserId(userId);
 
         assertEquals("leon", result.getUsername());
     }
@@ -93,7 +92,7 @@ public class ProfileServiceImplTest {
 
         assertThrows(
                 ProfileNotFoundException.class,
-                () -> userProfileService.getProfileByUserId(userId)
+                () -> profileService.getProfileByUserId(userId)
         );
     }
 
@@ -113,7 +112,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        Profile updated = userProfileService.updateProfile(
+        Profile updated = profileService.updateProfile(
                 userId,
                 "   ",
                 null,
@@ -140,7 +139,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        userProfileService.recordSuccessfulTransaction(userId, null);
+        profileService.recordSuccessfulTransaction(userId, null);
 
         assertEquals(3, profile.getSuccessfulTransactions());
         assertEquals(4.0, profile.getRating());
@@ -161,7 +160,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        userProfileService.recordSuccessfulTransaction(userId, 5.0);
+        profileService.recordSuccessfulTransaction(userId, 5.0);
 
         assertEquals(3, profile.getSuccessfulTransactions());
         assertEquals(4.333333333333333, profile.getRating());
@@ -182,7 +181,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        userProfileService.recordSuccessfulTransaction(userId, 0.0);
+        profileService.recordSuccessfulTransaction(userId, 0.0);
 
         assertEquals(2, profile.getSuccessfulTransactions());
         assertEquals(5.0, profile.getRating());
@@ -197,7 +196,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any()))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        Profile result = userProfileService.createProfileForUser(user, "");
+        Profile result = profileService.createProfileForUser(user, "");
 
         assertEquals("leon", result.getUsername());
     }
@@ -218,7 +217,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        Profile updated = userProfileService.updateProfile(
+        Profile updated = profileService.updateProfile(
                 userId,
                 null,
                 null,
@@ -244,7 +243,7 @@ public class ProfileServiceImplTest {
         when(profileRepository.save(any(Profile.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
-        Profile updated = userProfileService.updateProfile(
+        Profile updated = profileService.updateProfile(
                 userId,
                 "  new_username  ",
                 null,
@@ -252,5 +251,42 @@ public class ProfileServiceImplTest {
         );
 
         assertEquals("new_username", updated.getUsername());
+    }
+
+    @Test
+    void updateProfile_ShouldUpdateAndReturnProfile_WhenProfileExists() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder().id(userId).email("test@mail.com").build();
+        Profile existingProfile = Profile.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .username("oldUsername")
+                .fullName("Old Name")
+                .bio("Old Bio")
+                .build();
+
+        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existingProfile));
+        when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArgument(0));
+
+        Profile updatedProfile = profileService.updateProfile(userId, "newUsername", "New Name", "New Bio");
+
+        assertNotNull(updatedProfile);
+        assertEquals("newUsername", updatedProfile.getUsername());
+        assertEquals("New Name", updatedProfile.getFullName());
+        assertEquals("New Bio", updatedProfile.getBio());
+
+        verify(profileRepository, times(1)).findByUserId(userId);
+        verify(profileRepository, times(1)).save(existingProfile);
+    }
+
+    @Test
+    void updateProfile_ShouldThrowException_WhenProfileNotFound() {
+        UUID userId = UUID.randomUUID();
+        when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThrows(ProfileNotFoundException.class,
+                () -> profileService.updateProfile(userId, "newUsername", "New Name", "New Bio"));
+
+        verify(profileRepository, never()).save(any(Profile.class));
     }
 }

@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,7 +56,6 @@ public class KycServiceImplTest {
 
         KycSubmission submission = kycService.submitKyc(userId, request);
 
-        // Assertions
         assertNotNull(submission);
         assertEquals(AccountStatus.PENDING_VERIFICATION, user.getAccountStatus());
         assertEquals(user, submission.getUser());
@@ -90,5 +90,80 @@ public class KycServiceImplTest {
         assertEquals("Pengajuan KYC sedang diproses", exception.getMessage());
         verify(userRepository, never()).save(any(User.class));
         verify(kycRepository, never()).save(any(KycSubmission.class));
+    }
+
+    @Test
+    void getPendingKycList_ShouldReturnListOfPendingSubmissions() {
+        KycSubmission submission1 = KycSubmission.builder().status(KycStatus.REQUESTED).build();
+        KycSubmission submission2 = KycSubmission.builder().status(KycStatus.REQUESTED).build();
+
+        when(kycRepository.findAllByStatus(KycStatus.REQUESTED)).thenReturn(List.of(submission1, submission2));
+
+        List<KycSubmission> result = kycService.getPendingKycList();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals(KycStatus.REQUESTED, result.get(0).getStatus());
+        verify(kycRepository, times(1)).findAllByStatus(KycStatus.REQUESTED);
+    }
+
+    @Test
+    void approveKyc_ShouldUpdateSubmissionStatusAndUserRole() {
+        UUID submissionId = UUID.randomUUID();
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.PENDING_VERIFICATION)
+                .build();
+        KycSubmission submission = KycSubmission.builder()
+                .id(submissionId)
+                .user(user)
+                .status(KycStatus.REQUESTED)
+                .build();
+
+        when(kycRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+        when(kycRepository.save(any(KycSubmission.class))).thenAnswer(i -> i.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        kycService.approveKyc(submissionId);
+
+        assertEquals(KycStatus.APPROVED, submission.getStatus());
+        assertNotNull(submission.getProcessedAt());
+
+        assertEquals(Role.JASTIPER, user.getRole());
+        assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
+
+        verify(kycRepository, times(1)).save(submission);
+        verify(userRepository, times(1)).save(user);
+    }
+
+    @Test
+    void rejectKyc_ShouldUpdateSubmissionStatusAndRevertUserStatus() {
+        UUID submissionId = UUID.randomUUID();
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.PENDING_VERIFICATION)
+                .build();
+        KycSubmission submission = KycSubmission.builder()
+                .id(submissionId)
+                .user(user)
+                .status(KycStatus.REQUESTED)
+                .build();
+
+        when(kycRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+        when(kycRepository.save(any(KycSubmission.class))).thenAnswer(i -> i.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        kycService.rejectKyc(submissionId);
+
+        assertEquals(KycStatus.REJECTED, submission.getStatus());
+        assertNotNull(submission.getProcessedAt());
+
+        assertEquals(Role.TITIPERS, user.getRole());
+        assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
+
+        verify(kycRepository, times(1)).save(submission);
+        verify(userRepository, times(1)).save(user);
     }
 }
