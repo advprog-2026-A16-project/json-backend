@@ -61,6 +61,18 @@ class InProcessAuthEventPublisherTest {
     }
 
     @Test
+    void publishThrowsExceptionForUnsupportedEventType() {
+        AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
+        outboxEvent.setEventType("UNSUPPORTED_EVENT_TYPE");
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> publisher.publish(outboxEvent));
+
+        assertEquals("Unsupported auth event type: UNSUPPORTED_EVENT_TYPE", exception.getMessage());
+
+        verify(applicationEventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     void publishThrowsExceptionWhenPayloadMissingUserId() {
         AuthOutboxEvent outboxEvent = new AuthOutboxEvent();
         outboxEvent.setEventType(AuthEventType.USER_REGISTERED.name());
