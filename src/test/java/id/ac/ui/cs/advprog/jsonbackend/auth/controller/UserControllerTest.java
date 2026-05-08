@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
-import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ProfileResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.PublicProfileResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
@@ -55,8 +55,8 @@ class UserControllerTest {
     void getPublicProfile_ShouldReturnProfileResponse_WhenUserExists() {
         when(profileService.getProfileByUserId(targetUserId)).thenReturn(mockProfile);
 
-        ResponseEntity<ProfileResponse> response = userController.getPublicProfile(targetUserId);
-        
+        ResponseEntity<PublicProfileResponse> response = userController.getPublicProfile(targetUserId);
+
         assertEquals(200, response.getStatusCode().value());
         assertEquals("public_user", response.getBody().username());
         assertEquals("Public User", response.getBody().fullName());
