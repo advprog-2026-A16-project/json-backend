@@ -4,6 +4,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.KycStatus;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.KycSubmissionNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.KycSubmission;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
@@ -29,10 +31,11 @@ public class KycServiceImpl implements KycService {
     @Override
     @Transactional
     public KycSubmission submitKyc(UUID userId, KycRequest request) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (user.getAccountStatus() == AccountStatus.PENDING_VERIFICATION) {
-            throw new IllegalStateException("Pengajuan KYC sedang diproses");
+            throw new IllegalStateException("KYC application is being processed");
         }
 
         user.setAccountStatus(AccountStatus.PENDING_VERIFICATION);
@@ -59,7 +62,9 @@ public class KycServiceImpl implements KycService {
     @Override
     @Transactional
     public void approveKyc(UUID submissionId) {
-        KycSubmission submission = kycRepository.findById(submissionId).orElseThrow();
+        KycSubmission submission = kycRepository.findById(submissionId)
+                .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
+
         submission.setStatus(KycStatus.APPROVED);
         submission.setProcessedAt(LocalDateTime.now());
         kycRepository.save(submission);
@@ -73,7 +78,9 @@ public class KycServiceImpl implements KycService {
     @Override
     @Transactional
     public void rejectKyc(UUID submissionId) {
-        KycSubmission submission = kycRepository.findById(submissionId).orElseThrow();
+        KycSubmission submission = kycRepository.findById(submissionId)
+                .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
+
         submission.setStatus(KycStatus.REJECTED);
         submission.setProcessedAt(LocalDateTime.now());
         kycRepository.save(submission);

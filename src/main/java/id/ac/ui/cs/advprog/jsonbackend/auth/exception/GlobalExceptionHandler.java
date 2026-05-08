@@ -89,6 +89,14 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UsernameAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameAlreadyExistsException(UsernameAlreadyExistsException ex) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+    }
+
     @ExceptionHandler(PasswordMismatchException.class)
     public ResponseEntity<ErrorResponse> handlePasswordMismatchException(PasswordMismatchException ex) {
         return buildErrorResponse(
@@ -107,6 +115,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(KycSubmissionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKycSubmissionNotFoundException(KycSubmissionNotFoundException ex) {
         return buildErrorResponse(
                 HttpStatus.NOT_FOUND,
                 ex.getMessage()

@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UsernameAlreadyExistsException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
@@ -24,6 +25,13 @@ public class ProfileServiceImpl implements ProfileService {
             finalUsername = user.getEmail().split("@")[0];
         }
 
+        String baseUsername = finalUsername;
+        int counter = 1;
+        while (profileRepository.existsByUsername(finalUsername)) {
+            finalUsername = baseUsername + counter;
+            counter++;
+        }
+
         Profile profile = Profile.builder()
                 .user(user)
                 .username(finalUsername)
@@ -43,7 +51,13 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = getProfileByUserId(userId);
 
         if (username != null && !username.trim().isEmpty()) {
-            profile.setUsername(username.trim());
+            String newUsername = username.trim();
+
+            if (!newUsername.equals(profile.getUsername()) && profileRepository.existsByUsername(newUsername)) {
+                throw new UsernameAlreadyExistsException("Username is already taken");
+            }
+
+            profile.setUsername(newUsername);
         }
         if (fullName != null && !fullName.trim().isEmpty()) {
             profile.setFullName(fullName.trim());

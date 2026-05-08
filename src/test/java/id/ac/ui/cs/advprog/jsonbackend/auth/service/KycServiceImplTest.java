@@ -87,7 +87,7 @@ public class KycServiceImplTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> kycService.submitKyc(userId, request));
 
-        assertEquals("Pengajuan KYC sedang diproses", exception.getMessage());
+        assertEquals("KYC application is being processed", exception.getMessage());
         verify(userRepository, never()).save(any(User.class));
         verify(kycRepository, never()).save(any(KycSubmission.class));
     }
