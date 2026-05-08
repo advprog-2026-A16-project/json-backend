@@ -124,4 +124,48 @@ class AuthOutboxEventDispatcherTest {
                 .createdAt(LocalDateTime.now())
                 .build();
     }
+
+    @Test
+    void dispatchPendingEventsShouldSetUnknownFailureReasonWhenExceptionMessageIsNull() {
+        AuthOutboxEvent pending = createSampleEvent();
+
+        when(outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc(AuthOutboxEventStatus.PENDING))
+                .thenReturn(List.of(pending));
+
+        doThrow(new RuntimeException((String) null))
+                .when(eventPublisher)
+                .publish(pending);
+
+        dispatcher.dispatchPendingEvents();
+
+        assertEquals(AuthOutboxEventStatus.FAILED, pending.getStatus());
+        assertEquals("Unknown failure", pending.getFailureReason());
+        verify(outboxEventRepository, times(1)).save(pending);
+    }
+
+    @Test
+    void dispatchPendingEventsShouldTrimFailureReasonWhenMessageTooLong() {
+        AuthOutboxEvent pending = createSampleEvent();
+
+        when(outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc(AuthOutboxEventStatus.PENDING))
+                .thenReturn(List.of(pending));
+
+        String longMessage = "a".repeat(600);
+
+        doThrow(new RuntimeException(longMessage))
+                .when(eventPublisher)
+                .publish(pending);
+
+        dispatcher.dispatchPendingEvents();
+
+        assertEquals(AuthOutboxEventStatus.FAILED, pending.getStatus());
+
+        assertNotNull(pending.getFailureReason());
+
+        assertEquals(500, pending.getFailureReason().length());
+
+        assertEquals(longMessage.substring(0, 500), pending.getFailureReason());
+
+        verify(outboxEventRepository, times(1)).save(pending);
+    }
 }
