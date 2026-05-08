@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AdminUserResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UserStatusUpdateRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
+import id.ac.ui.cs.advprog.jsonbackend.auth.service.AdminUserService;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.KycService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +19,12 @@ import java.util.UUID;
 public class AdminUserController {
 
     private final KycService kycService;
+    private final AdminUserService adminUserService;
 
     @GetMapping("/users")
     public ResponseEntity<List<AdminUserResponse>> getAllUsers() {
-        List<AdminUserResponse> responses = kycService.getAllUsers().stream()
-                .map(this::convertToAdminResponse)
+        List<AdminUserResponse> responses = adminUserService.getAllUsers().stream()
+                .map(AdminUserResponse::from)
                 .toList();
         return ResponseEntity.ok(responses);
     }
@@ -36,7 +38,7 @@ public class AdminUserController {
         }
 
         List<AdminUserResponse> responses = kycService.getPendingKycList().stream()
-                .map(this::convertToAdminResponse)
+                .map(AdminUserResponse::from)
                 .toList();
         return ResponseEntity.ok(responses);
     }
@@ -44,13 +46,13 @@ public class AdminUserController {
     @PutMapping("/users/{id}/kyc/approve")
     public ResponseEntity<AdminUserResponse> approveKyc(@PathVariable UUID id) {
         Profile approvedProfile = kycService.approveKyc(id);
-        return ResponseEntity.ok(convertToAdminResponse(approvedProfile));
+        return ResponseEntity.ok(AdminUserResponse.from(approvedProfile));
     }
 
     @PutMapping("/users/{id}/kyc/reject")
     public ResponseEntity<AdminUserResponse> rejectKyc(@PathVariable UUID id) {
         Profile rejectedProfile = kycService.rejectKyc(id);
-        return ResponseEntity.ok(convertToAdminResponse(rejectedProfile));
+        return ResponseEntity.ok(AdminUserResponse.from(rejectedProfile));
     }
 
     @PutMapping("/users/{id}/status")
@@ -58,22 +60,7 @@ public class AdminUserController {
             @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateRequest request) {
 
-        Profile updatedProfile = kycService.updateUserStatus(id, request.accountStatus(), request.role());
-        return ResponseEntity.ok(convertToAdminResponse(updatedProfile));
-    }
-
-    private AdminUserResponse convertToAdminResponse(Profile profile) {
-        return new AdminUserResponse(
-                profile.getUser().getId(),
-                profile.getUser().getEmail(),
-                profile.getUser().getRole(),
-                profile.getUser().getAccountStatus(),
-                profile.getUsername(),
-                profile.getFullName(),
-                profile.getKycFullName(),
-                profile.getIdentityNumber(),
-                profile.getSocialMediaLink(),
-                profile.isVerifiedJastiper()
-        );
+        Profile updatedProfile = adminUserService.updateUserStatus(id, request.accountStatus(), request.role());
+        return ResponseEntity.ok(AdminUserResponse.from(updatedProfile));
     }
 }

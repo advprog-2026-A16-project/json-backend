@@ -18,6 +18,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class KycServiceImpl implements KycService {
+
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
 
@@ -50,12 +51,6 @@ public class KycServiceImpl implements KycService {
     @Transactional(readOnly = true)
     public List<Profile> getPendingKycList() {
         return profileRepository.findAllByUserAccountStatus(AccountStatus.PENDING_VERIFICATION);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Profile> getAllUsers() {
-        return profileRepository.findAll();
     }
 
     @Override
@@ -95,24 +90,6 @@ public class KycServiceImpl implements KycService {
         profile.setIdentityNumber(null);
         profile.setSocialMediaLink(null);
 
-        return profileRepository.save(profile);
-    }
-
-    @Override
-    @Transactional
-    public Profile updateUserStatus(UUID userId, AccountStatus status, Role role) {
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ProfileNotFoundException("Profile tidak ditemukan"));
-        User user = profile.getUser();
-
-        user.setAccountStatus(status);
-        user.setRole(role);
-
-        if (role == Role.TITIPERS) {
-            profile.setVerifiedJastiper(false);
-        }
-
-        userRepository.save(user);
         return profileRepository.save(profile);
     }
 }

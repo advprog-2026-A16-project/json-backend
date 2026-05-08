@@ -12,7 +12,6 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.EmailAlreadyRegisteredExce
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +28,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
@@ -39,7 +39,7 @@ class AuthServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private ProfileRepository profileRepository;
+    private ProfileService profileService;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -76,11 +76,12 @@ class AuthServiceImplTest {
             return u;
         }).when(userRepository).save(any(User.class));
 
-        doAnswer(invocation -> {
-            Profile p = invocation.getArgument(0);
-            p.setId(UUID.randomUUID());
-            return p;
-        }).when(profileRepository).save(any(Profile.class));
+        Profile mockProfile = Profile.builder()
+                .user(user)
+                .username("test")
+                .build();
+        mockProfile.setId(UUID.randomUUID());
+        when(profileService.createProfileForUser(any(User.class), anyString())).thenReturn(mockProfile);
 
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
@@ -90,7 +91,7 @@ class AuthServiceImplTest {
         assertEquals("jwt-token", response.token());
 
         verify(userRepository).save(any(User.class));
-        verify(profileRepository).save(any(Profile.class));
+        verify(profileService).createProfileForUser(any(User.class), anyString());
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
@@ -101,7 +102,7 @@ class AuthServiceImplTest {
         assertThrows(PasswordMismatchException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
-        verify(profileRepository, never()).save(any(Profile.class));
+        verify(profileService, never()).createProfileForUser(any(), any());
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -113,7 +114,7 @@ class AuthServiceImplTest {
         assertThrows(EmailAlreadyRegisteredException.class, () -> authService.register(request));
 
         verify(userRepository, never()).save(any(User.class));
-        verify(profileRepository, never()).save(any(Profile.class));
+        verify(profileService, never()).createProfileForUser(any(), any());
         verify(outboxEventRepository, never()).save(any(AuthOutboxEvent.class));
     }
 
@@ -128,19 +129,20 @@ class AuthServiceImplTest {
             u.setId(UUID.randomUUID());
             return u;
         }).when(userRepository).save(any(User.class));
-
-        doAnswer(invocation -> {
-            Profile p = invocation.getArgument(0);
-            p.setId(UUID.randomUUID());
-            return p;
-        }).when(profileRepository).save(any(Profile.class));
+        
+        Profile mockProfile = Profile.builder()
+                .user(user)
+                .username("test")
+                .build();
+        mockProfile.setId(UUID.randomUUID());
+        when(profileService.createProfileForUser(any(User.class), anyString())).thenReturn(mockProfile);
 
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         authService.register(request);
 
         verify(userRepository).save(argThat(savedUser -> savedUser.getRole() == Role.TITIPERS));
-        verify(profileRepository).save(any(Profile.class));
+        verify(profileService).createProfileForUser(any(User.class), anyString()); // VERIFY UPDATE
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
     }
 
