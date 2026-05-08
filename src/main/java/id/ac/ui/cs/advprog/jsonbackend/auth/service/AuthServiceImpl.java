@@ -85,7 +85,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (user.getAccountStatus() == AccountStatus.BANNED) {
             throw new AccountBannedException("Your account has been banned.");
@@ -101,10 +101,12 @@ public class AuthServiceImpl implements AuthService {
 
     private void validateRegisterRequest(RegisterRequest request) {
         if (!request.password().equals(request.confirmPassword())) {
-            throw new PasswordMismatchException();
+            throw new PasswordMismatchException("The password and confirmation password do not match.");
         }
         if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new EmailAlreadyRegisteredException();
+            throw new EmailAlreadyRegisteredException(
+                    "Email already registered"
+            );
         }
     }
 }

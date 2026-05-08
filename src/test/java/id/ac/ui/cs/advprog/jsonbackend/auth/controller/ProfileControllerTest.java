@@ -3,6 +3,9 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ProfileResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UpdateProfileRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.GlobalExceptionHandler;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.ProfileService;
@@ -46,7 +49,9 @@ class ProfileControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(profileController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(profileController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
 
         userId = UUID.randomUUID();
 
@@ -74,6 +79,19 @@ class ProfileControllerTest {
                         .principal(() -> "test@email.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("test"));
+    }
+
+    @Test
+    @WithMockUser(username = "test@email.com")
+    void whenGetMyProfile_ProfileNotFound_ShouldReturnNotFound() throws Exception {
+        when(profileService.getProfileByUserId(any()))
+                .thenThrow(new ProfileNotFoundException("Profile not found"));
+
+        mockMvc.perform(get("/api/profile/me")
+                        .principal(() -> "test@email.com"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("Profile not found"));
     }
 
     @Test
