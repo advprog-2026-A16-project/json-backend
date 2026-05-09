@@ -66,4 +66,56 @@ class WalletEventListenerTest {
         assertEquals(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), eventCaptor.getValue().getOrderId());
         assertEquals("Saldo tidak mencukupi", eventCaptor.getValue().getReason());
     }
+
+    @Test
+    void testHandleOrderCreatedEvent_OptimisticLockFailure() {
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+                userId,
+                new BigDecimal("50000")
+        );
+
+        doThrow(new ObjectOptimisticLockingFailureException("wallet", "id"))
+                .when(walletService)
+                .payment(any(PaymentRequest.class));
+
+        walletEventListener.handleOrderCreatedEvent(event);
+
+        ArgumentCaptor<PaymentFailedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentFailedEvent.class);
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        assertEquals(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), eventCaptor.getValue().getOrderId());
+        assertEquals(
+                "Sistem sedang sibuk, transaksi dibatalkan",
+                eventCaptor.getValue().getReason()
+        );
+    }
+
+    @Test
+    void testHandleOrderCreatedEvent_GenericException() {
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+                userId,
+                new BigDecimal("50000")
+        );
+
+        doThrow(new RuntimeException("unexpected error"))
+                .when(walletService)
+                .payment(any(PaymentRequest.class));
+
+        walletEventListener.handleOrderCreatedEvent(event);
+
+        ArgumentCaptor<PaymentFailedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PaymentFailedEvent.class);
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        assertEquals(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), eventCaptor.getValue().getOrderId());
+        assertEquals(
+                "Terjadi kesalahan internal pada sistem pembayaran",
+                eventCaptor.getValue().getReason()
+        );
+    }
 }
