@@ -45,7 +45,7 @@ class InventoryEventFlowIntegrationTest {
     }
 
     @Test
-    void dispatchPendingEventsShouldReserveStockAndMarkProcessed() {
+    void dispatchPendingEventsShouldTreatStockReservedAsOutputEventNoop() {
         Product product = Product.builder()
                 .name("Flow Product")
                 .description("Flow desc")
@@ -72,12 +72,11 @@ class InventoryEventFlowIntegrationTest {
         dispatcher.dispatchPendingEvents();
 
         Product updated = productRepository.findById(savedProduct.getId()).orElseThrow();
-        assertEquals(3, updated.getStock());
+        assertEquals(5, updated.getStock());
 
         InventoryOutboxEvent updatedOutbox = outboxEventRepository.findById(savedEvent.getId()).orElseThrow();
         assertEquals(OutboxEventStatus.SENT, updatedOutbox.getStatus());
-        assertTrue(processedEventRepository
-                .existsByEventIdAndHandlerName(eventId, "StockReservationRequestedEventHandler"));
+        assertEquals(0, processedEventRepository.count());
     }
 
     @Test

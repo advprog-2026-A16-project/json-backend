@@ -39,39 +39,43 @@ class ProductControllerTest {
     @Test
     void getAllProductsShouldReturnListFromService() {
         ProductResponse response = sampleResponse();
-        when(productService.findAll()).thenReturn(List.of(response));
+        when(productService.findAll(0, 20, "createdAt", "desc")).thenReturn(List.of(response));
 
-        List<ProductResponse> result = productController.getAllProducts();
+        List<ProductResponse> result = productController.getAllProducts(0, 20, "createdAt", "desc");
 
         assertEquals(1, result.size());
         assertEquals("Sneakers Limited Edition", result.getFirst().getName());
-        verify(productService, times(1)).findAll();
+        verify(productService, times(1)).findAll(0, 20, "createdAt", "desc");
     }
 
     @Test
     void searchProductsShouldDelegateToService() {
         String keyword = "sneakers";
         ProductResponse response = sampleResponse();
-        when(productService.searchByKeyword(keyword)).thenReturn(List.of(response));
+        when(productService.searchByKeyword(keyword, 0, 20, "createdAt", "desc"))
+                .thenReturn(List.of(response));
 
-        List<ProductResponse> result = productController.searchProducts(keyword);
+        List<ProductResponse> result = productController.searchProducts(keyword, 0, 20, "createdAt", "desc");
 
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
-        verify(productService, times(1)).searchByKeyword(keyword);
+        verify(productService, times(1))
+                .searchByKeyword(keyword, 0, 20, "createdAt", "desc");
     }
 
     @Test
     void getProductsByJastiperShouldDelegateToService() {
         UUID jastiperId = UUID.randomUUID();
         ProductResponse response = sampleResponse();
-        when(productService.findByJastiperId(jastiperId)).thenReturn(List.of(response));
+        when(productService.findByJastiperId(jastiperId, 0, 20, "createdAt", "desc"))
+                .thenReturn(List.of(response));
 
-        List<ProductResponse> result = productController.getProductsByJastiper(jastiperId);
+        List<ProductResponse> result = productController.getProductsByJastiper(jastiperId, 0, 20, "createdAt", "desc");
 
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
-        verify(productService, times(1)).findByJastiperId(jastiperId);
+        verify(productService, times(1))
+                .findByJastiperId(jastiperId, 0, 20, "createdAt", "desc");
     }
 
     @Test

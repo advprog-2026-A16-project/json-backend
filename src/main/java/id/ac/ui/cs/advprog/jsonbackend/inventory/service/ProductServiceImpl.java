@@ -9,20 +9,28 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEven
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.repository.ProductRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "name", "price", "stock", "purchaseDate"
+    );
 
     private final ProductRepository productRepository;
     private final InventoryOutboxEventRepository outboxEventRepository;
@@ -39,7 +47,14 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findAll() {
-        return productRepository.findAll().stream()
+        return findAll(0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findAll(int page, int size, String sortBy, String direction) {
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
+        return productRepository.findAll(pageable).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
@@ -47,14 +62,23 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> searchByKeyword(String keyword) {
+        return searchByKeyword(keyword, 0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchByKeyword(String keyword, int page, int size, String sortBy, String direction) {
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (normalizedKeyword.isEmpty()) {
-            return productRepository.findAll().stream()
+            return productRepository.findAll(pageable).stream()
                     .map(productMapper::toResponse)
                     .toList();
         }
         return productRepository
-                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                        normalizedKeyword, normalizedKeyword, pageable
+                )
                 .stream()
                 .map(productMapper::toResponse)
                 .toList();
@@ -63,10 +87,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> findByJastiperId(UUID jastiperId) {
+        return findByJastiperId(jastiperId, 0, 20, "createdAt", "desc");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findByJastiperId(UUID jastiperId, int page, int size, String sortBy, String direction) {
         if (jastiperId == null) {
             throw new InvalidProductException("Jastiper id is required");
         }
-        return productRepository.findByJastiperId(jastiperId).stream()
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
+        return productRepository.findByJastiperId(jastiperId, pageable).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
@@ -79,10 +110,13 @@ public class ProductServiceImpl implements ProductService {
         if (quantity <= 0) {
             throw new InvalidProductException("Quantity must be greater than zero");
         }
-        Product existing = productRepository.findByIdForUpdate(productId)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
-        existing.reduceStock(quantity);
-        productRepository.save(existing);
+        int updated = productRepository.decrementStockIfEnough(productId, quantity);
+        if (updated == 0) {
+            if (!productRepository.existsById(productId)) {
+                throw new ProductNotFoundException("Product not found with id: " + productId);
+            }
+            throw new InsufficientStockException("Stock is not enough");
+        }
         appendOutboxEvent(InventoryEventType.STOCK_RESERVED, productId, quantity);
     }
 
@@ -200,5 +234,22 @@ public class ProductServiceImpl implements ProductService {
         if (actorRole != Role.JASTIPER) {
             throw new ForbiddenInventoryAccessException("Only jastiper can manage own products");
         }
+    }
+
+    private Pageable buildPageable(int page, int size, String sortBy, String direction) {
+        if (page < 0) {
+            throw new InvalidProductException("Page must be zero or greater");
+        }
+        if (size <= 0) {
+            throw new InvalidProductException("Size must be greater than zero");
+        }
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
+            throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
+        }
+        String safeDirection = (direction == null || direction.isBlank()) ? "desc" : direction;
+        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(safeDirection)
+                .orElseThrow(() -> new InvalidProductException("Unsupported sort direction: " + safeDirection));
+        return PageRequest.of(page, size, Sort.by(sortDirection, safeSortBy));
     }
 }

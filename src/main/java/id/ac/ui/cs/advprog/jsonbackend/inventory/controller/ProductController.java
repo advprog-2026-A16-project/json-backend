@@ -30,12 +30,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
 @Tag(name = "Inventory", description = "Inventory and catalog endpoints")
 public class ProductController {
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "name", "price", "stock", "purchaseDate"
+    );
 
     private final ProductService productService;
 
@@ -47,16 +51,29 @@ public class ProductController {
     @Operation(summary = "Get all products")
     @ApiResponse(responseCode = "200", description = "Success",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class))))
-    public List<ProductResponse> getAllProducts() {
-        return productService.findAll();
+    public List<ProductResponse> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        validateListParams(page, size, sortBy, direction);
+        return productService.findAll(page, size, sortBy, direction);
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search products by keyword")
     @ApiResponse(responseCode = "200", description = "Success",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class))))
-    public List<ProductResponse> searchProducts(@RequestParam String keyword) {
-        return productService.searchByKeyword(keyword);
+    public List<ProductResponse> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        validateListParams(page, size, sortBy, direction);
+        return productService.searchByKeyword(keyword, page, size, sortBy, direction);
     }
 
     @GetMapping("/jastiper/{jastiperId}")
@@ -66,8 +83,15 @@ public class ProductController {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = ProductResponse.class)))),
             @ApiResponse(responseCode = "400", description = "Invalid jastiper id")
     })
-    public List<ProductResponse> getProductsByJastiper(@PathVariable UUID jastiperId) {
-        return productService.findByJastiperId(jastiperId);
+    public List<ProductResponse> getProductsByJastiper(
+            @PathVariable UUID jastiperId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        validateListParams(page, size, sortBy, direction);
+        return productService.findByJastiperId(jastiperId, page, size, sortBy, direction);
     }
 
     @GetMapping("/{id}")
@@ -151,5 +175,26 @@ public class ProductController {
             throw new ForbiddenInventoryAccessException("Authenticated user is required");
         }
         return user;
+    }
+
+    private void validateListParams(int page, int size, String sortBy) {
+        validateListParams(page, size, sortBy, "desc");
+    }
+
+    private void validateListParams(int page, int size, String sortBy, String direction) {
+        if (page < 0) {
+            throw new InvalidProductException("Page must be zero or greater");
+        }
+        if (size <= 0) {
+            throw new InvalidProductException("Size must be greater than zero");
+        }
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
+            throw new InvalidProductException("Unsupported sort field: " + safeSortBy);
+        }
+        String safeDirection = (direction == null || direction.isBlank()) ? "desc" : direction;
+        if (!("asc".equalsIgnoreCase(safeDirection) || "desc".equalsIgnoreCase(safeDirection))) {
+            throw new InvalidProductException("Unsupported sort direction: " + safeDirection);
+        }
     }
 }

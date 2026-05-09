@@ -13,12 +13,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
 @Table(name = "users")
 @Getter
 @Setter
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
 public class User implements UserDetails {
 
     @Id
@@ -46,12 +47,11 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public User() {}
-
     public User(String email, String password, Role role) {
         this.email = email;
         this.password = password;
         this.role = role;
+        this.accountStatus = AccountStatus.ACTIVE;
     }
 
     @PrePersist
@@ -88,9 +88,6 @@ public class User implements UserDetails {
         return getAccountStatus() == AccountStatus.ACTIVE;
     }
 
-    /**
-     * backward compability logic
-     */
     public AccountStatus getAccountStatus() {
         return accountStatus != null ? accountStatus : AccountStatus.ACTIVE;
     }
