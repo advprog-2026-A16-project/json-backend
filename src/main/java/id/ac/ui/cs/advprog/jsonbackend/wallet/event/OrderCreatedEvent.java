@@ -8,7 +8,7 @@ import java.util.UUID;
 @Getter
 @AllArgsConstructor
 public class OrderCreatedEvent {
-    private String orderId;
+    private UUID orderId;
     private UUID userId;
     private BigDecimal amount;
 }

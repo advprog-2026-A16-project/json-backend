@@ -40,7 +40,7 @@ class WalletEventListenerTest {
 
     @Test
     void testHandleOrderCreatedEvent_Success() {
-        OrderCreatedEvent event = new OrderCreatedEvent("ORDER-123", userId, new BigDecimal("50000"));
+        OrderCreatedEvent event = new OrderCreatedEvent(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), userId, new BigDecimal("50000"));
 
         walletEventListener.handleOrderCreatedEvent(event);
 
@@ -49,12 +49,12 @@ class WalletEventListenerTest {
         ArgumentCaptor<PaymentSuccessEvent> eventCaptor = ArgumentCaptor.forClass(PaymentSuccessEvent.class);
         verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
 
-        assertEquals("ORDER-123", eventCaptor.getValue().getOrderId());
+        assertEquals(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), eventCaptor.getValue().getOrderId());
     }
 
     @Test
     void testHandleOrderCreatedEvent_InsufficientBalance() {
-        OrderCreatedEvent event = new OrderCreatedEvent("ORDER-123", userId, new BigDecimal("50000"));
+        OrderCreatedEvent event = new OrderCreatedEvent(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), userId, new BigDecimal("50000"));
 
         doThrow(new InsufficientBalanceException()).when(walletService).payment(any(PaymentRequest.class));
 
@@ -63,7 +63,7 @@ class WalletEventListenerTest {
         ArgumentCaptor<PaymentFailedEvent> eventCaptor = ArgumentCaptor.forClass(PaymentFailedEvent.class);
         verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
 
-        assertEquals("ORDER-123", eventCaptor.getValue().getOrderId());
+        assertEquals(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), eventCaptor.getValue().getOrderId());
         assertEquals("Saldo tidak mencukupi", eventCaptor.getValue().getReason());
     }
 }
