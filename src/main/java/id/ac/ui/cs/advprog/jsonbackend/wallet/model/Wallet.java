@@ -28,12 +28,20 @@ public class Wallet {
     @Version
     private Long version;
 
+    private void validatePositiveAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+    }
+
     public void credit(BigDecimal amount) {
+        validatePositiveAmount(amount);
         balance = balance.add(amount);
     }
 
     public void debit(BigDecimal amount) {
-        if(balance.compareTo(amount) < 0){
+        validatePositiveAmount(amount);
+        if (balance.compareTo(amount) < 0) {
             throw new InsufficientBalanceException();
         }
         balance = balance.subtract(amount);
