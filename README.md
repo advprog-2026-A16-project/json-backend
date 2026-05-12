@@ -18,6 +18,19 @@ Backend ini bertanggung jawab atas:
 - Manajemen voucher & promo
 - Validasi constraint bisnis & integritas data
 
+## Architecture / System Design
+
+![group-architecture-G1-Current-Context.png](docs/images/group-architecture-G1-Current-Context.png)
+
+![group-architecture-G1-Current-Container.png](docs/images/group-architecture-G1-Current-Container.png)
+
+![group-architecture-G1-Current-Deployment.png](docs/images/group-architecture-G1-Current-Deployment.png)
+
+![group-architecture-G2-Future-Context.png](docs/images/group-architecture-G2-Future-Context.png)
+
+![group-architecture-G2-Future-Container.png](docs/images/group-architecture-G2-Future-Container.png)
+
+
 ## Tech Stack
 
 - React (Next.js)	
