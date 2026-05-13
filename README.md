@@ -159,3 +159,28 @@ Catatan:
 
 - Endpoint publik inventory dapat diakses langsung sesuai policy security saat ini.
 - Endpoint yang butuh autentikasi gunakan tombol `Authorize` di Swagger UI dengan format `Bearer <JWT_TOKEN>`.
+
+## Inventory Event-Driven Notes
+
+Inventory stock mutation menggunakan outbox pattern.
+
+- Reserve stock (`POST /api/products/{id}/reserve`) akan:
+  - mengurangi stok secara sinkron (transactional),
+  - menambahkan outbox event `STOCK_RESERVED`.
+- Release stock diproses melalui event `STOCK_RELEASED` di pipeline inventory event.
+
+### Outbox lifecycle
+
+- `PENDING -> SENT`: publish sukses.
+- `PENDING -> FAILED`: publish gagal retryable.
+- `FAILED -> PENDING`: direqueue untuk retry.
+- `FAILED -> DEAD_LETTER`: retry limit tercapai.
+- `PENDING -> DEAD_LETTER`: non-retryable failure (contoh: event type tidak didukung / payload invalid).
+
+### Failure reason
+
+Event outbox menyimpan `failureReason` untuk diagnosa dispatch failure.
+
+- Di-set saat dispatch gagal.
+- Dibersihkan saat event kembali `SENT` atau saat event `FAILED` direqueue ke `PENDING`.
+- Dipotong maksimal 500 karakter agar aman untuk penyimpanan/log.

@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -14,6 +15,17 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    public record ErrorResponse(String message) {}
+
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            HttpStatus status,
+            String message
+    ) {
+        return ResponseEntity
+                .status(status)
+                .body(new ErrorResponse(message));
+    }
 
     @ExceptionHandler(InvalidProductException.class)
     public ResponseEntity<Map<String, String>> handleInvalidProductException(InvalidProductException ex) {
@@ -54,9 +66,66 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
-        return ResponseEntity
-                .status(500)
-                .body(Map.of("message", "An internal server error occurred"));
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        return buildErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An internal server error occurred"
+        );
+    }
+
+    @ExceptionHandler(AccountBannedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountBannedException(AccountBannedException ex) {
+        return buildErrorResponse(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(EmailAlreadyRegisteredException.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyRegisteredException(EmailAlreadyRegisteredException ex) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(UsernameAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameAlreadyExistsException(UsernameAlreadyExistsException ex) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordMismatchException(PasswordMismatchException ex) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ProfileNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProfileNotFoundException(ProfileNotFoundException ex) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(KycSubmissionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleKycSubmissionNotFoundException(KycSubmissionNotFoundException ex) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
     }
 }

@@ -1,17 +1,26 @@
 package id.ac.ui.cs.advprog.jsonbackend.inventory.service;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductRequest;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.InventoryEventType;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.InventoryOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.InventoryOutboxEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ForbiddenInventoryAccessException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.mapper.ProductMapper;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.model.Product;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.repository.ProductRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -36,6 +45,9 @@ class ProductServiceImplTest {
 
     @Mock
     private ProductMapper productMapper;
+
+    @Mock
+    private InventoryOutboxEventRepository outboxEventRepository;
 
     @InjectMocks
     private ProductServiceImpl productService;
@@ -88,18 +100,40 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createAsJastiperThrowsWhenActorNotJastiper() {
+        ProductRequest request = sampleRequest();
+        UUID actorId = request.getJastiperId();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.createAsJastiper(request, actorId, Role.TITIPERS));
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createAsJastiperThrowsWhenActorNotOwner() {
+        ProductRequest request = sampleRequest();
+        UUID actorId = UUID.randomUUID();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.createAsJastiper(request, actorId, Role.JASTIPER));
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void findAllProductsSuccess() {
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
+        Pageable pageable = PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
-        when(productRepository.findAll()).thenReturn(List.of(entity));
+        when(productRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(entity)));
         when(productMapper.toResponse(entity)).thenReturn(response);
 
         List<ProductResponse> result = productService.findAll();
 
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
-        verify(productRepository, times(1)).findAll();
+        verify(productRepository, times(1)).findAll(pageable);
     }
 
     @Test
@@ -107,9 +141,11 @@ class ProductServiceImplTest {
         String keyword = "sneakers";
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
+        Pageable pageable = PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
-        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword))
-                .thenReturn(List.of(entity));
+        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable))
+                .thenReturn(new PageImpl<>(List.of(entity)));
         when(productMapper.toResponse(entity)).thenReturn(response);
 
         List<ProductResponse> result = productService.searchByKeyword(keyword);
@@ -117,7 +153,7 @@ class ProductServiceImplTest {
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
         verify(productRepository, times(1))
-                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable);
         verify(productMapper, times(1)).toResponse(entity);
     }
 
@@ -126,18 +162,21 @@ class ProductServiceImplTest {
         String keyword = "   ";
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
+        Pageable pageable = PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
-        when(productRepository.findAll()).thenReturn(List.of(entity));
+        when(productRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(entity)));
         when(productMapper.toResponse(entity)).thenReturn(response);
 
         List<ProductResponse> result = productService.searchByKeyword(keyword);
 
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
-        verify(productRepository, times(1)).findAll();
+        verify(productRepository, times(1)).findAll(pageable);
         verify(productRepository, never())
                 .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.anyString());
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(Pageable.class));
         verify(productMapper, times(1)).toResponse(entity);
     }
 
@@ -146,53 +185,65 @@ class ProductServiceImplTest {
         UUID jastiperId = UUID.randomUUID();
         Product entity = sampleEntity();
         ProductResponse response = sampleResponse(entity.getId());
+        Pageable pageable = PageRequest.of(0, 20, org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
-        when(productRepository.findByJastiperId(jastiperId)).thenReturn(List.of(entity));
+        when(productRepository.findByJastiperId(jastiperId, pageable)).thenReturn(new PageImpl<>(List.of(entity)));
         when(productMapper.toResponse(entity)).thenReturn(response);
 
         List<ProductResponse> result = productService.findByJastiperId(jastiperId);
 
         assertEquals(1, result.size());
         assertEquals(response.getId(), result.getFirst().getId());
-        verify(productRepository, times(1)).findByJastiperId(jastiperId);
+        verify(productRepository, times(1)).findByJastiperId(jastiperId, pageable);
         verify(productMapper, times(1)).toResponse(entity);
     }
 
     @Test
     void findProductsByJastiperIdThrowsWhenNull() {
         assertThrows(InvalidProductException.class, () -> productService.findByJastiperId(null));
-        verify(productRepository, never()).findByJastiperId(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).findByJastiperId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(Pageable.class));
+    }
+
+    @Test
+    void findAllThrowsWhenSortByFieldIsUnsupported() {
+        assertThrows(InvalidProductException.class,
+                () -> productService.findAll(0, 20, "dropTable", "desc"));
+        verify(productRepository, never()).findAll(org.mockito.ArgumentMatchers.any(Pageable.class));
+    }
+
+    @Test
+    void findAllThrowsWhenDirectionInvalid() {
+        assertThrows(InvalidProductException.class,
+                () -> productService.findAll(0, 20, "createdAt", "sideways"));
+        verify(productRepository, never()).findAll(org.mockito.ArgumentMatchers.any(Pageable.class));
     }
 
     @Test
     void reserveStockSuccess() {
         UUID productId = UUID.randomUUID();
-        Product existing = sampleEntity();
-        existing.setStock(10);
-
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
+        when(productRepository.decrementStockIfEnough(productId, 3)).thenReturn(1);
 
         productService.reserveStock(productId, 3);
 
-        assertEquals(7, existing.getStock());
-        verify(productRepository, times(1)).findByIdForUpdate(productId);
-        verify(productRepository, never()).findById(productId);
-        verify(productRepository, times(1)).save(existing);
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 3);
+        verify(productRepository, never()).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, times(1)).save(org.mockito.ArgumentMatchers.any(InventoryOutboxEvent.class));
     }
 
     @Test
     void reserveStockThrowsWhenInsufficient() {
         UUID productId = UUID.randomUUID();
-        Product existing = sampleEntity();
-        existing.setStock(2);
-
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.decrementStockIfEnough(productId, 3)).thenReturn(0);
+        when(productRepository.existsById(productId)).thenReturn(true);
 
         assertThrows(InsufficientStockException.class, () -> productService.reserveStock(productId, 3));
-        verify(productRepository, times(1)).findByIdForUpdate(productId);
-        verify(productRepository, never()).findById(productId);
-        verify(productRepository, never()).save(existing);
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 3);
+        verify(productRepository, times(1)).existsById(productId);
+        verify(productRepository, never()).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -202,6 +253,7 @@ class ProductServiceImplTest {
         assertThrows(InvalidProductException.class, () -> productService.reserveStock(productId, 0));
         verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -209,16 +261,64 @@ class ProductServiceImplTest {
         assertThrows(InvalidProductException.class, () -> productService.reserveStock(null, 1));
         verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void reserveStockThrowsWhenProductNotFound() {
         UUID productId = UUID.randomUUID();
-        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.empty());
+        when(productRepository.decrementStockIfEnough(productId, 1)).thenReturn(0);
+        when(productRepository.existsById(productId)).thenReturn(false);
 
         assertThrows(ProductNotFoundException.class, () -> productService.reserveStock(productId, 1));
+        verify(productRepository, times(1)).decrementStockIfEnough(productId, 1);
+        verify(productRepository, times(1)).existsById(productId);
+        verify(productRepository, never()).findByIdForUpdate(productId);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void releaseStockSuccess() {
+        UUID productId = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setId(productId);
+        existing.setStock(2);
+
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(existing));
+        when(productRepository.save(existing)).thenReturn(existing);
+
+        productService.releaseStock(productId, 3);
+
+        assertEquals(5, existing.getStock());
+        verify(productRepository, times(1)).findByIdForUpdate(productId);
+        verify(productRepository, times(1)).save(existing);
+
+        ArgumentCaptor<InventoryOutboxEvent> captor = ArgumentCaptor.forClass(InventoryOutboxEvent.class);
+        verify(outboxEventRepository, times(1)).save(captor.capture());
+        assertEquals(InventoryEventType.STOCK_RELEASED, captor.getValue().getEventType());
+        assertEquals(productId, captor.getValue().getAggregateId());
+    }
+
+    @Test
+    void releaseStockThrowsWhenQuantityNotPositive() {
+        UUID productId = UUID.randomUUID();
+
+        assertThrows(InvalidProductException.class, () -> productService.releaseStock(productId, 0));
+        verify(productRepository, never()).findByIdForUpdate(org.mockito.ArgumentMatchers.any());
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void releaseStockThrowsWhenProductNotFound() {
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.empty());
+
+        assertThrows(ProductNotFoundException.class, () -> productService.releaseStock(productId, 1));
         verify(productRepository, times(1)).findByIdForUpdate(productId);
         verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(outboxEventRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -249,6 +349,31 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void updateAsJastiperThrowsWhenNotOwner() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+        Product existing = sampleEntity();
+        existing.setJastiperId(UUID.randomUUID());
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.updateAsJastiper(id, request, UUID.randomUUID(), Role.JASTIPER));
+        verify(productRepository, never()).save(existing);
+    }
+
+    @Test
+    void updateAsJastiperThrowsWhenActorNotJastiper() {
+        UUID id = UUID.randomUUID();
+        ProductRequest request = sampleRequest();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.updateAsJastiper(id, request, UUID.randomUUID(), Role.TITIPERS));
+        verify(productRepository, never()).findById(id);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void deleteProductSuccess() {
         UUID id = UUID.randomUUID();
         Product existing = sampleEntity();
@@ -258,6 +383,29 @@ class ProductServiceImplTest {
         productService.delete(id);
 
         verify(productRepository, times(1)).delete(existing);
+    }
+
+    @Test
+    void deleteAsJastiperThrowsWhenNotOwner() {
+        UUID id = UUID.randomUUID();
+        Product existing = sampleEntity();
+        existing.setJastiperId(UUID.randomUUID());
+
+        when(productRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.deleteAsJastiper(id, UUID.randomUUID(), Role.JASTIPER));
+        verify(productRepository, never()).delete(existing);
+    }
+
+    @Test
+    void deleteAsJastiperThrowsWhenActorNotJastiper() {
+        UUID id = UUID.randomUUID();
+
+        assertThrows(ForbiddenInventoryAccessException.class,
+                () -> productService.deleteAsJastiper(id, UUID.randomUUID(), Role.TITIPERS));
+        verify(productRepository, never()).findById(id);
+        verify(productRepository, never()).delete(org.mockito.ArgumentMatchers.any());
     }
 
     private ProductRequest sampleRequest() {

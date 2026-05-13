@@ -3,8 +3,9 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.AuthService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,29 +28,76 @@ class AuthControllerTest {
     @InjectMocks
     private AuthController authController;
 
+    private RegisterRequest registerRequest;
+    private LoginRequest loginRequest;
+
+    private AuthResponse registerResponse;
+    private AuthResponse loginResponse;
+
+    @BeforeEach
+    void setUp() {
+        registerRequest = new RegisterRequest(
+                "test@example.com",
+                "password",
+                "password"
+        );
+
+        loginRequest = new LoginRequest(
+                "test@example.com",
+                "password"
+        );
+
+        registerResponse = new AuthResponse(
+                "token",
+                "Registrasi berhasil"
+        );
+
+        loginResponse = new AuthResponse(
+                "token",
+                "Login berhasil"
+        );
+    }
+
     @Test
     void registerReturnsOkStatusAndResponse() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password", "password");
-        AuthResponse expectedResponse = new AuthResponse("token", "Registrasi berhasil");
-        when(authService.register(request)).thenReturn(expectedResponse);
+        when(authService.register(registerRequest))
+                .thenReturn(registerResponse);
 
-        ResponseEntity<AuthResponse> response = authController.register(request);
+        ResponseEntity<AuthResponse> response =
+                authController.register(registerRequest);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
-        verify(authService).register(request);
+        assertEquals(registerResponse, response.getBody());
+
+        verify(authService).register(registerRequest);
     }
 
     @Test
     void loginReturnsOkStatusAndResponse() {
-        LoginRequest request = new LoginRequest("test@example.com", "password");
-        AuthResponse expectedResponse = new AuthResponse("token", "Login berhasil");
-        when(authService.login(request)).thenReturn(expectedResponse);
+        when(authService.login(loginRequest))
+                .thenReturn(loginResponse);
 
-        ResponseEntity<AuthResponse> response = authController.login(request);
+        ResponseEntity<AuthResponse> response =
+                authController.login(loginRequest);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
-        verify(authService).login(request);
+        assertEquals(loginResponse, response.getBody());
+
+        verify(authService).login(loginRequest);
+    }
+
+    @Test
+    void loginThrowsUserNotFoundException() {
+        when(authService.login(loginRequest))
+                .thenThrow(new UserNotFoundException("User not found"));
+
+        UserNotFoundException exception = assertThrows(
+                UserNotFoundException.class,
+                () -> authController.login(loginRequest)
+        );
+
+        assertEquals("User not found", exception.getMessage());
+
+        verify(authService).login(loginRequest);
     }
 }

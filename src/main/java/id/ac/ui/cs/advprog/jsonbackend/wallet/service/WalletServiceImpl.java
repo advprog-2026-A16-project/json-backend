@@ -62,4 +62,38 @@ public class WalletServiceImpl implements WalletService {
 
         return new WalletResponse(wallet.getUserId(), wallet.getBalance());
     }
+
+    @Override
+    @Transactional
+    public WalletResponse payment(PaymentRequest request) {
+        Wallet wallet = getWallet(request.getUserId());
+
+        wallet.debit(request.getAmount());
+        walletRepository.save(wallet);
+
+        Transaction trx = new Transaction();
+        trx.setUserId(request.getUserId());
+        trx.setAmount(request.getAmount());
+        trx.setType(TransactionType.PAYMENT);
+        transactionRepository.save(trx);
+
+        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    }
+
+    @Override
+    @Transactional
+    public WalletResponse refund(RefundRequest request) {
+        Wallet wallet = getWallet(request.getUserId());
+
+        wallet.credit(request.getAmount());
+        walletRepository.save(wallet);
+
+        Transaction trx = new Transaction();
+        trx.setUserId(request.getUserId());
+        trx.setAmount(request.getAmount());
+        trx.setType(TransactionType.REFUND);
+        transactionRepository.save(trx);
+
+        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    }
 }
