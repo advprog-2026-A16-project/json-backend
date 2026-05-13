@@ -6,15 +6,16 @@ import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventPayloadFactory;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.RefundRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +30,16 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final ProductService productService;
-    private final WalletService walletService;
+    private final OrderOutboxEventRepository outboxEventRepository;
 
-    public OrderServiceImpl(OrderRepository orderRepository, OrderMapper orderMapper,
-                            ProductService productService, WalletService walletService) {
+    public OrderServiceImpl(OrderRepository orderRepository,
+                            OrderMapper orderMapper,
+                            ProductService productService,
+                            OrderOutboxEventRepository outboxEventRepository) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.productService = productService;
-        this.walletService = walletService;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     @Override
@@ -49,22 +52,21 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal totalPrice = product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
 
-        // (Wallet) Potong saldo secara Synchronous
-        PaymentRequest paymentRequest = new PaymentRequest();
-        paymentRequest.setUserId(request.getTitipersId());
-        paymentRequest.setAmount(totalPrice);
-        walletService.payment(paymentRequest);
-
-        // (Inventory) Kurang stok secara Synchronous
-        productService.reserveStock(product.getId(), request.getQuantity());
-
         Order order = orderMapper.toEntity(request);
         order.setJastiperId(product.getJastiperId());
         order.setTotalPrice(totalPrice);
         order.setStatus(OrderStatus.PAID);
 
-        Order saved = orderRepository.save(order);
-        return orderMapper.toResponse(saved);
+        Order savedOrder = orderRepository.save(order);
+
+        // Mempublikasikan event pembuatan pesanan ke dalam outbox
+        String payload = OrderEventPayloadFactory.orderCreatedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
+                savedOrder.getTitipersId(), savedOrder.getTotalPrice()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), payload);
+
+        return orderMapper.toResponse(savedOrder);
     }
 
     @Override
@@ -128,18 +130,16 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        Order saved = orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
-        // (Wallet) Refund
-        RefundRequest refundRequest = new RefundRequest();
-        refundRequest.setUserId(order.getTitipersId());
-        refundRequest.setAmount(order.getTotalPrice());
-        walletService.refund(refundRequest);
+        // Mempublikasikan event pembatalan pesanan ke dalam outbox
+        String payload = OrderEventPayloadFactory.orderCancelledPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
+                savedOrder.getTitipersId(), savedOrder.getTotalPrice()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_CANCELLED, savedOrder.getId(), payload);
 
-        // (Inventory) Release Stok
-        productService.releaseStock(order.getProductId(), order.getQuantity());
-
-        return orderMapper.toResponse(saved);
+        return orderMapper.toResponse(savedOrder);
     }
 
     @Override
@@ -159,10 +159,29 @@ public class OrderServiceImpl implements OrderService {
             order.setReviewNotes(request.getReviewNotes());
         }
 
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+
+        // Mempublikasikan event pemberian penilaian ke dalam outbox
+        String payload = OrderEventPayloadFactory.orderRatedPayload(
+                savedOrder.getId(), savedOrder.getJastiperId(),
+                savedOrder.getJastiperRating(), savedOrder.getProductRating()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_RATED, savedOrder.getId(), payload);
+
+        return orderMapper.toResponse(savedOrder);
     }
 
     private Order getOrderOrThrow(UUID id) {
         return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+    }
+
+    private void appendOutboxEvent(OrderEventType eventType, UUID aggregateId, String payload) {
+        OrderOutboxEvent outboxEvent = OrderOutboxEvent.builder()
+                .eventType(eventType)
+                .aggregateId(aggregateId)
+                .payload(payload)
+                .correlationId(UUID.randomUUID().toString())
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 }
