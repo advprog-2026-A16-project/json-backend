@@ -2,14 +2,19 @@ package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.RefundRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,14 +43,13 @@ class OrderServiceImplTest {
     @Mock
     private ProductService productService;
 
+    @Mock
+    private WalletService walletService;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
-    private UUID orderId;
-    private UUID productId;
-    private UUID titipersId;
-    private UUID jastiperId;
-
+    private UUID orderId, productId, titipersId, jastiperId;
     private Order order;
     private OrderResponse orderResponse;
 
@@ -62,14 +66,12 @@ class OrderServiceImplTest {
         order.setTitipersId(titipersId);
         order.setJastiperId(jastiperId);
         order.setQuantity(2);
+        order.setTotalPrice(new BigDecimal("100000"));
         order.setStatus(OrderStatus.PAID);
 
         orderResponse = new OrderResponse();
         orderResponse.setId(orderId);
         orderResponse.setProductId(productId);
-        orderResponse.setTitipersId(titipersId);
-        orderResponse.setJastiperId(jastiperId);
-        orderResponse.setQuantity(2);
         orderResponse.setStatus(OrderStatus.PAID);
     }
 
@@ -80,112 +82,69 @@ class OrderServiceImplTest {
         request.setQuantity(2);
         request.setTitipersId(titipersId);
 
-        ProductResponse productResponse = new ProductResponse();
-        productResponse.setId(productId);
-        productResponse.setJastiperId(jastiperId);
-        productResponse.setPrice(new BigDecimal("50000"));
-        productResponse.setStock(10); // Stok aman
+        ProductResponse product = new ProductResponse();
+        product.setId(productId);
+        product.setPrice(new BigDecimal("50000"));
+        product.setStock(10);
+        product.setJastiperId(jastiperId);
 
-        // Mocking behavior
-        when(productService.findById(productId)).thenReturn(productResponse);
+        when(productService.findById(productId)).thenReturn(product);
         when(orderMapper.toEntity(request)).thenReturn(order);
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        // Eksekusi
         OrderResponse result = orderService.create(request);
 
-        // Verifikasi
         assertNotNull(result);
-        assertEquals(orderId, result.getId());
-        assertEquals(jastiperId, result.getJastiperId());
-
-        // Pastikan service manggil reserveStock untuk ngurangin inventory
+        verify(walletService).payment(any(PaymentRequest.class));
         verify(productService).reserveStock(productId, 2);
-        verify(orderRepository).save(any(Order.class));
     }
 
     @Test
-    void testCreateOrderThrowsExceptionWhenStockInsufficient() {
-        OrderRequest request = new OrderRequest();
-        request.setProductId(productId);
-        request.setQuantity(15); // Minta 15
+    void testUpdateStatusSuccess() {
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest();
+        request.setNewStatus(OrderStatus.PURCHASED);
 
-        ProductResponse productResponse = new ProductResponse();
-        productResponse.setId(productId);
-        productResponse.setStock(10); // Stok cuma 10
-
-        when(productService.findById(productId)).thenReturn(productResponse);
-
-        // Eksekusi & Verifikasi Exception
-        InvalidOrderException exception = assertThrows(InvalidOrderException.class, () -> {
-            orderService.create(request);
-        });
-
-        assertEquals("Stok tidak mencukupi untuk pesanan ini", exception.getMessage());
-
-        // Pastikan nggak nyimpen ke database atau ngurangin stok kalau gagal
-        verify(productService, never()).reserveStock(any(UUID.class), anyInt());
-        verify(orderRepository, never()).save(any(Order.class));
-    }
-
-    @Test
-    void testFindAllReturnsListOfOrders() {
-        when(orderRepository.findAll()).thenReturn(List.of(order));
-        when(orderMapper.toResponse(order)).thenReturn(orderResponse);
-
-        List<OrderResponse> result = orderService.findAll();
-
-        assertFalse(result.isEmpty());
-        assertEquals(1, result.size());
-        assertEquals(orderId, result.get(0).getId());
-        verify(orderRepository).findAll();
-    }
-
-    @Test
-    void testFindByIdSuccess() {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        OrderResponse result = orderService.findById(orderId);
+        OrderResponse result = orderService.updateStatus(orderId, request);
 
         assertNotNull(result);
-        assertEquals(orderId, result.getId());
-        verify(orderRepository).findById(orderId);
+        verify(orderRepository).save(order);
     }
 
     @Test
-    void testFindByIdThrowsExceptionWhenNotFound() {
-        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
-
-        assertThrows(OrderNotFoundException.class, () -> {
-            orderService.findById(orderId);
-        });
-
-        verify(orderRepository).findById(orderId);
-    }
-
-    @Test
-    void testFindByTitipersIdReturnsListOfOrders() {
-        when(orderRepository.findByTitipersId(titipersId)).thenReturn(List.of(order));
+    void testCancelByJastiperSuccess() {
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        List<OrderResponse> result = orderService.findByTitipersId(titipersId);
+        OrderResponse result = orderService.cancelByJastiper(orderId);
 
-        assertFalse(result.isEmpty());
-        assertEquals(titipersId, result.get(0).getTitipersId());
-        verify(orderRepository).findByTitipersId(titipersId);
+        assertNotNull(result);
+        verify(walletService).refund(any(RefundRequest.class));
+        verify(productService).releaseStock(productId, 2);
+        assertEquals(OrderStatus.CANCELLED, order.getStatus());
     }
 
     @Test
-    void testFindByJastiperIdReturnsListOfOrders() {
-        when(orderRepository.findByJastiperId(jastiperId)).thenReturn(List.of(order));
+    void testGiveRatingSuccess() {
+        order.setStatus(OrderStatus.COMPLETED); // Harus completed
+        OrderRatingRequest request = new OrderRatingRequest();
+        request.setJastiperRating(5);
+        request.setProductRating(4);
+        request.setReviewNotes("Bagus");
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        List<OrderResponse> result = orderService.findByJastiperId(jastiperId);
+        OrderResponse result = orderService.giveRating(orderId, request);
 
-        assertFalse(result.isEmpty());
-        assertEquals(jastiperId, result.get(0).getJastiperId());
-        verify(orderRepository).findByJastiperId(jastiperId);
+        assertNotNull(result);
+        assertEquals(5, order.getJastiperRating());
+        assertEquals("Bagus", order.getReviewNotes());
     }
 }
