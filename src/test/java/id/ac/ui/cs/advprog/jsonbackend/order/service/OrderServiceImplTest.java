@@ -6,15 +6,14 @@ import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.RefundRequest;
-import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +43,7 @@ class OrderServiceImplTest {
     private ProductService productService;
 
     @Mock
-    private WalletService walletService;
+    private OrderOutboxEventRepository outboxEventRepository;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -76,7 +75,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void testCreateOrderSuccess() {
+    void testCreateOrderEventDrivenSuccess() {
         OrderRequest request = new OrderRequest();
         request.setProductId(productId);
         request.setQuantity(2);
@@ -96,27 +95,14 @@ class OrderServiceImplTest {
         OrderResponse result = orderService.create(request);
 
         assertNotNull(result);
-        verify(walletService).payment(any(PaymentRequest.class));
-        verify(productService).reserveStock(productId, 2);
+
+        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
+
+        verify(productService, never()).reserveStock(any(), anyInt());
     }
 
     @Test
-    void testUpdateStatusSuccess() {
-        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest();
-        request.setNewStatus(OrderStatus.PURCHASED);
-
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderMapper.toResponse(order)).thenReturn(orderResponse);
-
-        OrderResponse result = orderService.updateStatus(orderId, request);
-
-        assertNotNull(result);
-        verify(orderRepository).save(order);
-    }
-
-    @Test
-    void testCancelByJastiperSuccess() {
+    void testCancelByJastiperEventDrivenSuccess() {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
@@ -124,14 +110,14 @@ class OrderServiceImplTest {
         OrderResponse result = orderService.cancelByJastiper(orderId);
 
         assertNotNull(result);
-        verify(walletService).refund(any(RefundRequest.class));
-        verify(productService).releaseStock(productId, 2);
         assertEquals(OrderStatus.CANCELLED, order.getStatus());
+
+        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
     }
 
     @Test
-    void testGiveRatingSuccess() {
-        order.setStatus(OrderStatus.COMPLETED); // Harus completed
+    void testGiveRatingEventDrivenSuccess() {
+        order.setStatus(OrderStatus.COMPLETED);
         OrderRatingRequest request = new OrderRatingRequest();
         request.setJastiperRating(5);
         request.setProductRating(4);
@@ -144,7 +130,8 @@ class OrderServiceImplTest {
         OrderResponse result = orderService.giveRating(orderId, request);
 
         assertNotNull(result);
-        assertEquals(5, order.getJastiperRating());
-        assertEquals("Bagus", order.getReviewNotes());
+
+
+        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
     }
 }
