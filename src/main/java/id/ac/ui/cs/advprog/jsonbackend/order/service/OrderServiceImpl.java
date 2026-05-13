@@ -59,12 +59,18 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Mempublikasikan event pembuatan pesanan ke dalam outbox
-        String payload = OrderEventPayloadFactory.orderCreatedPayload(
+        // Mempublikasikan event untuk Modul Wallet (Pembayaran)
+        String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
                 savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
                 savedOrder.getTitipersId(), savedOrder.getTotalPrice()
         );
-        appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), payload);
+        appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
+
+        // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
+        String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
+        );
+        appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
 
         return orderMapper.toResponse(savedOrder);
     }
@@ -132,12 +138,18 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
 
-        // Mempublikasikan event pembatalan pesanan ke dalam outbox
-        String payload = OrderEventPayloadFactory.orderCancelledPayload(
+        // Mempublikasikan event untuk Modul Wallet (Refund)
+        String orderCancelledPayload = OrderEventPayloadFactory.orderCancelledPayload(
                 savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
                 savedOrder.getTitipersId(), savedOrder.getTotalPrice()
         );
-        appendOutboxEvent(OrderEventType.ORDER_CANCELLED, savedOrder.getId(), payload);
+        appendOutboxEvent(OrderEventType.ORDER_CANCELLED, savedOrder.getId(), orderCancelledPayload);
+
+        // Mempublikasikan event untuk Modul Inventory (Pelepasan Stok)
+        String stockReleasePayload = OrderEventPayloadFactory.stockReleaseRequestedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
+        );
+        appendOutboxEvent(OrderEventType.STOCK_RELEASE_REQUESTED, savedOrder.getId(), stockReleasePayload);
 
         return orderMapper.toResponse(savedOrder);
     }
@@ -161,7 +173,6 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Mempublikasikan event pemberian penilaian ke dalam outbox
         String payload = OrderEventPayloadFactory.orderRatedPayload(
                 savedOrder.getId(), savedOrder.getJastiperId(),
                 savedOrder.getJastiperRating(), savedOrder.getProductRating()

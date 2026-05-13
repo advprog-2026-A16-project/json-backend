@@ -22,4 +22,13 @@ public final class OrderEventPayloadFactory {
         return String.format("{\"orderId\":\"%s\",\"jastiperId\":\"%s\",\"jastiperRating\":%d,\"productRating\":%d}",
                 orderId, jastiperId, jastiperRating, productRating);
     }
+
+    public static String stockReservationRequestedPayload(UUID orderId, UUID productId, int quantity) {
+        return String.format("{\"orderId\":\"%s\",\"productId\":\"%s\",\"quantity\":%d}", orderId, productId, quantity);
+    }
+
+    public static String stockReleaseRequestedPayload(UUID orderId, UUID productId, int quantity) {
+        return String.format("{\"orderId\":\"%s\",\"productId\":\"%s\",\"quantity\":%d}", orderId, productId, quantity);
+    }
+
 }
