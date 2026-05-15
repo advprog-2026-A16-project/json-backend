@@ -1,12 +1,15 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
-import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventPayloadFactory;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
@@ -27,88 +30,169 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final ProductService productService;
+    private final OrderOutboxEventRepository outboxEventRepository;
 
-    public OrderServiceImpl(OrderRepository orderRepository, OrderMapper orderMapper, ProductService productService) {
+    public OrderServiceImpl(OrderRepository orderRepository,
+                            OrderMapper orderMapper,
+                            ProductService productService,
+                            OrderOutboxEventRepository outboxEventRepository) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.productService = productService;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     @Override
     public OrderResponse create(OrderRequest request) {
-        // Ambil detail produk dari Modul Inventory pake fungsi yang udah ada
         ProductResponse product = productService.findById(request.getProductId());
 
-        // Verifikasi stok dari response yang didapat
         if (product.getStock() < request.getQuantity()) {
             throw new InvalidOrderException("Stok tidak mencukupi untuk pesanan ini");
         }
 
-        // Kalkulasi harga asli berdasarkan harga dari Modul Inventory
         BigDecimal totalPrice = product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
 
-        // TODO: (Wallet) Panggil WalletService untuk potong saldo
-
-        // TODO: (Inventory) Kurang stok
-        productService.reserveStock(product.getId(), request.getQuantity());
-
-        // Rakit data pesanan
         Order order = orderMapper.toEntity(request);
-
-        // Otomatis set jastiperId pakai data yang ditarik dari produk
         order.setJastiperId(product.getJastiperId());
         order.setTotalPrice(totalPrice);
         order.setStatus(OrderStatus.PAID);
 
-        // Simpan ke database Order
-        Order saved = orderRepository.save(order);
-        return orderMapper.toResponse(saved);
+        Order savedOrder = orderRepository.save(order);
+
+        // Mempublikasikan event untuk Modul Wallet (Pembayaran)
+        String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
+                savedOrder.getTitipersId(), savedOrder.getTotalPrice()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
+
+        // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
+        String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
+        );
+        appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
+
+        return orderMapper.toResponse(savedOrder);
     }
 
-    // Ambil semua data pesanan
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> findAll() {
-        return orderRepository.findAll().stream()
-                .map(orderMapper::toResponse)
-                .toList();
+        return orderRepository.findAll().stream().map(orderMapper::toResponse).toList();
     }
 
-    // Cari pesanan berdasarkan ID
     @Override
     @Transactional(readOnly = true)
     public OrderResponse findById(UUID id) {
-        Order order = getOrderOrThrow(id);
-        return orderMapper.toResponse(order);
+        return orderMapper.toResponse(getOrderOrThrow(id));
     }
 
-    // Ambil riwayat pesanan milik Titiper
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> findByTitipersId(UUID titipersId) {
-        return orderRepository.findByTitipersId(titipersId).stream()
-                .map(orderMapper::toResponse)
-                .toList();
+        return orderRepository.findByTitipersId(titipersId).stream().map(orderMapper::toResponse).toList();
     }
 
-    // Ambil daftar pesanan yang harus diproses Jastiper
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> findByJastiperId(UUID jastiperId) {
-        return orderRepository.findByJastiperId(jastiperId).stream()
-                .map(orderMapper::toResponse)
-                .toList();
+        return orderRepository.findByJastiperId(jastiperId).stream().map(orderMapper::toResponse).toList();
     }
 
-    // Placeholder fungsi lainnya
-    @Override public OrderResponse updateStatus(UUID id, OrderStatusUpdateRequest request) { return null; }
-    @Override public OrderResponse cancelByJastiper(UUID id) { return null; }
-    @Override public OrderResponse giveRating(UUID id, OrderRatingRequest request) { return null; }
+    @Override
+    public OrderResponse updateStatus(UUID id, OrderStatusUpdateRequest request) {
+        Order order = getOrderOrThrow(id);
+        OrderStatus newStatus = request.getNewStatus();
 
-    // Helper untuk cari pesanan atau lempar error
+        if (newStatus == null) {
+            throw new InvalidOrderException("Status pesanan tidak boleh kosong");
+        }
+
+        validateStatusTransition(order.getStatus(), newStatus);
+        order.setStatus(newStatus);
+
+        return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        boolean isValid = switch (currentStatus) {
+            case PAID -> newStatus == OrderStatus.PURCHASED;
+            case PURCHASED -> newStatus == OrderStatus.SHIPPED;
+            case SHIPPED -> newStatus == OrderStatus.COMPLETED;
+            default -> false;
+        };
+
+        if (!isValid) {
+            throw new InvalidOrderException("Transisi status tidak valid");
+        }
+    }
+
+    @Override
+    public OrderResponse cancelByJastiper(UUID id) {
+        Order order = getOrderOrThrow(id);
+
+        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED) {
+            throw new InvalidOrderException("Tidak bisa membatalkan pesanan yang sudah dikirim atau selesai.");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        Order savedOrder = orderRepository.save(order);
+
+        // Mempublikasikan event untuk Modul Wallet (Refund)
+        String orderCancelledPayload = OrderEventPayloadFactory.orderCancelledPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
+                savedOrder.getTitipersId(), savedOrder.getTotalPrice()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_CANCELLED, savedOrder.getId(), orderCancelledPayload);
+
+        // Mempublikasikan event untuk Modul Inventory (Pelepasan Stok)
+        String stockReleasePayload = OrderEventPayloadFactory.stockReleaseRequestedPayload(
+                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
+        );
+        appendOutboxEvent(OrderEventType.STOCK_RELEASE_REQUESTED, savedOrder.getId(), stockReleasePayload);
+
+        return orderMapper.toResponse(savedOrder);
+    }
+
+    @Override
+    public OrderResponse giveRating(UUID id, OrderRatingRequest request) {
+        Order order = getOrderOrThrow(id);
+
+        if (order.getStatus() != OrderStatus.COMPLETED) {
+            throw new InvalidOrderException("Hanya pesanan dengan status COMPLETED yang dapat diberi rating.");
+        }
+        if (order.getJastiperRating() != null || order.getProductRating() != null) {
+            throw new InvalidOrderException("Pesanan ini sudah diberi rating sebelumnya.");
+        }
+
+        order.setJastiperRating(request.getJastiperRating());
+        order.setProductRating(request.getProductRating());
+        if (request.getReviewNotes() != null) {
+            order.setReviewNotes(request.getReviewNotes());
+        }
+
+        Order savedOrder = orderRepository.save(order);
+
+        String payload = OrderEventPayloadFactory.orderRatedPayload(
+                savedOrder.getId(), savedOrder.getJastiperId(),
+                savedOrder.getJastiperRating(), savedOrder.getProductRating()
+        );
+        appendOutboxEvent(OrderEventType.ORDER_RATED, savedOrder.getId(), payload);
+
+        return orderMapper.toResponse(savedOrder);
+    }
+
     private Order getOrderOrThrow(UUID id) {
-        return orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
     }
 
+    private void appendOutboxEvent(OrderEventType eventType, UUID aggregateId, String payload) {
+        OrderOutboxEvent outboxEvent = OrderOutboxEvent.builder()
+                .eventType(eventType)
+                .aggregateId(aggregateId)
+                .payload(payload)
+                .correlationId(UUID.randomUUID().toString())
+                .build();
+        outboxEventRepository.save(outboxEvent);
+    }
 }

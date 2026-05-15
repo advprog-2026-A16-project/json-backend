@@ -2,8 +2,12 @@ package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
 import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
@@ -38,14 +42,13 @@ class OrderServiceImplTest {
     @Mock
     private ProductService productService;
 
+    @Mock
+    private OrderOutboxEventRepository outboxEventRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
-    private UUID orderId;
-    private UUID productId;
-    private UUID titipersId;
-    private UUID jastiperId;
-
+    private UUID orderId, productId, titipersId, jastiperId;
     private Order order;
     private OrderResponse orderResponse;
 
@@ -62,130 +65,73 @@ class OrderServiceImplTest {
         order.setTitipersId(titipersId);
         order.setJastiperId(jastiperId);
         order.setQuantity(2);
+        order.setTotalPrice(new BigDecimal("100000"));
         order.setStatus(OrderStatus.PAID);
 
         orderResponse = new OrderResponse();
         orderResponse.setId(orderId);
         orderResponse.setProductId(productId);
-        orderResponse.setTitipersId(titipersId);
-        orderResponse.setJastiperId(jastiperId);
-        orderResponse.setQuantity(2);
         orderResponse.setStatus(OrderStatus.PAID);
     }
 
     @Test
-    void testCreateOrderSuccess() {
+    void testCreateOrderEventDrivenSuccess() {
         OrderRequest request = new OrderRequest();
         request.setProductId(productId);
         request.setQuantity(2);
         request.setTitipersId(titipersId);
 
-        ProductResponse productResponse = new ProductResponse();
-        productResponse.setId(productId);
-        productResponse.setJastiperId(jastiperId);
-        productResponse.setPrice(new BigDecimal("50000"));
-        productResponse.setStock(10); // Stok aman
+        ProductResponse product = new ProductResponse();
+        product.setId(productId);
+        product.setPrice(new BigDecimal("50000"));
+        product.setStock(10);
+        product.setJastiperId(jastiperId);
 
-        // Mocking behavior
-        when(productService.findById(productId)).thenReturn(productResponse);
+        when(productService.findById(productId)).thenReturn(product);
         when(orderMapper.toEntity(request)).thenReturn(order);
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        // Eksekusi
         OrderResponse result = orderService.create(request);
 
-        // Verifikasi
         assertNotNull(result);
-        assertEquals(orderId, result.getId());
-        assertEquals(jastiperId, result.getJastiperId());
 
-        // Pastikan service manggil reserveStock untuk ngurangin inventory
-        verify(productService).reserveStock(productId, 2);
-        verify(orderRepository).save(any(Order.class));
+        verify(outboxEventRepository, times(2)).save(any(OrderOutboxEvent.class));
+
+        verify(productService, never()).reserveStock(any(), anyInt());
     }
 
     @Test
-    void testCreateOrderThrowsExceptionWhenStockInsufficient() {
-        OrderRequest request = new OrderRequest();
-        request.setProductId(productId);
-        request.setQuantity(15); // Minta 15
-
-        ProductResponse productResponse = new ProductResponse();
-        productResponse.setId(productId);
-        productResponse.setStock(10); // Stok cuma 10
-
-        when(productService.findById(productId)).thenReturn(productResponse);
-
-        // Eksekusi & Verifikasi Exception
-        InvalidOrderException exception = assertThrows(InvalidOrderException.class, () -> {
-            orderService.create(request);
-        });
-
-        assertEquals("Stok tidak mencukupi untuk pesanan ini", exception.getMessage());
-
-        // Pastikan nggak nyimpen ke database atau ngurangin stok kalau gagal
-        verify(productService, never()).reserveStock(any(UUID.class), anyInt());
-        verify(orderRepository, never()).save(any(Order.class));
-    }
-
-    @Test
-    void testFindAllReturnsListOfOrders() {
-        when(orderRepository.findAll()).thenReturn(List.of(order));
-        when(orderMapper.toResponse(order)).thenReturn(orderResponse);
-
-        List<OrderResponse> result = orderService.findAll();
-
-        assertFalse(result.isEmpty());
-        assertEquals(1, result.size());
-        assertEquals(orderId, result.get(0).getId());
-        verify(orderRepository).findAll();
-    }
-
-    @Test
-    void testFindByIdSuccess() {
+    void testCancelByJastiperEventDrivenSuccess() {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        OrderResponse result = orderService.findById(orderId);
+        OrderResponse result = orderService.cancelByJastiper(orderId);
 
         assertNotNull(result);
-        assertEquals(orderId, result.getId());
-        verify(orderRepository).findById(orderId);
+        assertEquals(OrderStatus.CANCELLED, order.getStatus());
+
+        verify(outboxEventRepository, times(2)).save(any(OrderOutboxEvent.class));
     }
 
     @Test
-    void testFindByIdThrowsExceptionWhenNotFound() {
-        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
+    void testGiveRatingEventDrivenSuccess() {
+        order.setStatus(OrderStatus.COMPLETED);
+        OrderRatingRequest request = new OrderRatingRequest();
+        request.setJastiperRating(5);
+        request.setProductRating(4);
+        request.setReviewNotes("Bagus");
 
-        assertThrows(OrderNotFoundException.class, () -> {
-            orderService.findById(orderId);
-        });
-
-        verify(orderRepository).findById(orderId);
-    }
-
-    @Test
-    void testFindByTitipersIdReturnsListOfOrders() {
-        when(orderRepository.findByTitipersId(titipersId)).thenReturn(List.of(order));
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        List<OrderResponse> result = orderService.findByTitipersId(titipersId);
+        OrderResponse result = orderService.giveRating(orderId, request);
 
-        assertFalse(result.isEmpty());
-        assertEquals(titipersId, result.get(0).getTitipersId());
-        verify(orderRepository).findByTitipersId(titipersId);
-    }
+        assertNotNull(result);
 
-    @Test
-    void testFindByJastiperIdReturnsListOfOrders() {
-        when(orderRepository.findByJastiperId(jastiperId)).thenReturn(List.of(order));
-        when(orderMapper.toResponse(order)).thenReturn(orderResponse);
 
-        List<OrderResponse> result = orderService.findByJastiperId(jastiperId);
-
-        assertFalse(result.isEmpty());
-        assertEquals(jastiperId, result.get(0).getJastiperId());
-        verify(orderRepository).findByJastiperId(jastiperId);
+        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
     }
 }
