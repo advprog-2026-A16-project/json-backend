@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.order.event.StockReservationFailedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.model.ProcessedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.ProcessedEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
@@ -27,7 +27,7 @@ class StockReservationFailedEventHandlerTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private ProcessedEventRepository processedEventRepository;
+    private OrderProcessedEventRepository processedEventRepository;
 
     @InjectMocks
     private StockReservationFailedEventHandler handler;
@@ -60,7 +60,7 @@ class StockReservationFailedEventHandlerTest {
         // Pastikan status order jadi CANCELLED
         assertEquals(OrderStatus.CANCELLED, order.getStatus());
         verify(orderRepository).save(order);
-        verify(processedEventRepository).save(any(ProcessedEvent.class));
+        verify(processedEventRepository).save(any(OrderProcessedEvent.class));
     }
 
     @Test

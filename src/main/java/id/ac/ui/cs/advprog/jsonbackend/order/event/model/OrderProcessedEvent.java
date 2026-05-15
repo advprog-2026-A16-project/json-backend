@@ -27,7 +27,7 @@ import java.util.UUID;
         name = "order_processed_events",
         uniqueConstraints = @UniqueConstraint(name = "uk_order_processed_event", columnNames = {"event_id", "handler_name"})
 )
-public class ProcessedEvent {
+public class OrderProcessedEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

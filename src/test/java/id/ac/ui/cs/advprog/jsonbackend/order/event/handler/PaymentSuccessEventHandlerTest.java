@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentSuccessEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.model.ProcessedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.ProcessedEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
@@ -27,7 +27,7 @@ class PaymentSuccessEventHandlerTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private ProcessedEventRepository processedEventRepository;
+    private OrderProcessedEventRepository processedEventRepository;
 
     @InjectMocks
     private PaymentSuccessEventHandler handler;
@@ -55,7 +55,7 @@ class PaymentSuccessEventHandlerTest {
         handler.handle(event);
 
         assertEquals(OrderStatus.PAID, order.getStatus());
-        verify(processedEventRepository).save(any(ProcessedEvent.class));
+        verify(processedEventRepository).save(any(OrderProcessedEvent.class));
     }
 
     @Test

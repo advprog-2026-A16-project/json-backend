@@ -96,7 +96,7 @@ class OrderServiceImplTest {
 
         assertNotNull(result);
 
-        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
+        verify(outboxEventRepository, times(2)).save(any(OrderOutboxEvent.class));
 
         verify(productService, never()).reserveStock(any(), anyInt());
     }
@@ -112,7 +112,7 @@ class OrderServiceImplTest {
         assertNotNull(result);
         assertEquals(OrderStatus.CANCELLED, order.getStatus());
 
-        verify(outboxEventRepository).save(any(OrderOutboxEvent.class));
+        verify(outboxEventRepository, times(2)).save(any(OrderOutboxEvent.class));
     }
 
     @Test

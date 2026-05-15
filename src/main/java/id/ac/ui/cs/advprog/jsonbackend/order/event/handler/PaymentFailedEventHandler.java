@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.model.ProcessedEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.ProcessedEventRepository;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
 import org.springframework.context.event.EventListener;
@@ -13,11 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentFailedEventHandler {
 
     private final OrderRepository orderRepository;
-    private final ProcessedEventRepository processedEventRepository;
+    private final OrderProcessedEventRepository processedEventRepository;
     private static final String HANDLER_NAME = "PaymentFailedEventHandler";
 
     public PaymentFailedEventHandler(OrderRepository orderRepository,
-                                     ProcessedEventRepository processedEventRepository) {
+                                     OrderProcessedEventRepository processedEventRepository) {
         this.orderRepository = orderRepository;
         this.processedEventRepository = processedEventRepository;
     }
@@ -37,7 +37,7 @@ public class PaymentFailedEventHandler {
         });
 
         // Catat bahwa event ini sudah diproses
-        ProcessedEvent processedEvent = ProcessedEvent.builder()
+        OrderProcessedEvent processedEvent = OrderProcessedEvent.builder()
                 .eventId(event.getOrderId())
                 .handlerName(HANDLER_NAME)
                 .build();

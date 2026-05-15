@@ -3,7 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.order.event.service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("orderOutboxEventScheduler")
 public class OutboxEventScheduler {
 
     private final OutboxEventDispatcher dispatcher;
