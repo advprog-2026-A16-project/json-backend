@@ -54,10 +54,9 @@ jobs:
           host: ${{ secrets.PROD_EC2_HOST }}
           username: ${{ secrets.PROD_EC2_USER }}
           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-          script_stop: true
           envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
           script: |
-            set -euo pipefail
+            set -eu
 
             APP_DIR="/home/ec2-user/apps/json-backend"
 
@@ -77,24 +76,26 @@ jobs:
             fi
 
             mkdir -p deploy
-            cat > deploy/.env.prod <<ENVEOF
-            APP_ENV=production
-            POSTGRES_DB=${PROD_DB_NAME}
-            POSTGRES_USER=${PROD_DB_USER}
-            POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
-            JWT_SECRET_KEY=${PROD_JWT_SECRET_KEY}
-            DOCKER_IMAGE=${PROD_DOCKER_IMAGE}
-            ENVEOF
+            : > deploy/.env.prod
+            printf '%s\n' "APP_ENV=production" >> deploy/.env.prod
+            printf '%s\n' "POSTGRES_DB=${PROD_DB_NAME}" >> deploy/.env.prod
+            printf '%s\n' "POSTGRES_USER=${PROD_DB_USER}" >> deploy/.env.prod
+            printf '%s\n' "POSTGRES_PASSWORD=${PROD_DB_PASSWORD}" >> deploy/.env.prod
+            printf '%s\n' "JWT_SECRET_KEY=${PROD_JWT_SECRET_KEY}" >> deploy/.env.prod
+            printf '%s\n' "DOCKER_IMAGE=${PROD_DOCKER_IMAGE}" >> deploy/.env.prod
 
             if ! docker compose version >/dev/null 2>&1; then
               mkdir -p ~/.docker/cli-plugins
               ARCH="$(uname -m)"
-              case "$ARCH" in
-                x86_64) ARCH="x86_64" ;;
-                aarch64|arm64) ARCH="aarch64" ;;
-                *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
-              esac
-              curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-${ARCH}" -o ~/.docker/cli-plugins/docker-compose
+              if [ "$ARCH" = "x86_64" ]; then
+                COMPOSE_ARCH="x86_64"
+              elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                COMPOSE_ARCH="aarch64"
+              else
+                echo "Unsupported architecture: $ARCH"
+                exit 1
+              fi
+              curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-${COMPOSE_ARCH}" -o ~/.docker/cli-plugins/docker-compose
               chmod +x ~/.docker/cli-plugins/docker-compose
             fi
 
