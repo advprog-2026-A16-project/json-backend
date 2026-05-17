@@ -1,0 +1,28 @@
+services:
+  db:
+    cpus: 0.50
+    mem_limit: 512m
+    mem_reservation: 256m
+    # Keep PostgreSQL memory usage predictable during load tests.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+
+  backend:
+    cpus: 1.50
+    mem_limit: 1280m
+    mem_reservation: 768m
+    environment:
+      # Tune JVM heap to stay inside t3.small-like container limits.
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseG1GC
+        -XX:InitialRAMPercentage=20
+        -XX:MaxRAMPercentage=70
+        -XX:+ExitOnOutOfMemoryError
