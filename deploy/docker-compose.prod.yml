@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:17
-    container_name: json-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -17,7 +16,6 @@ services:
 
   backend:
     image: ${DOCKER_IMAGE}
-    container_name: json-backend
     restart: unless-stopped
     depends_on:
       db:

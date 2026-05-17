@@ -101,6 +101,8 @@ jobs:
 
             docker compose version
             echo "${PROD_DOCKERHUB_TOKEN}" | docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
+            docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod down --remove-orphans || true
+            docker rm -f json-backend json-postgres || true
             docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod pull backend
             docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
             docker image prune -f
