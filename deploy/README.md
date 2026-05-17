@@ -69,3 +69,64 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod ps
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f db
 ```
+
+## 5. Local t3.small-like setup for load test/profiling
+
+Tujuan: simulasi keterbatasan resource EC2 `t3.small` (2 vCPU, 2 GiB RAM) di environment lokal untuk profiling.
+
+1) Siapkan env lokal:
+
+```bash
+cp deploy/.env.prod.example deploy/.env.prod.local
+```
+
+Isi minimal:
+
+```env
+APP_ENV=development
+POSTGRES_DB=json_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=<your-local-db-password>
+JWT_SECRET_KEY=<your-jwt-secret>
+DOCKER_IMAGE=json-backend:local-smoke
+```
+
+2) Build image backend lokal:
+
+```bash
+docker build -t json-backend:local-smoke .
+```
+
+3) Jalankan stack dengan override limit resource:
+
+```bash
+docker compose \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.t3small.yml \
+  --env-file deploy/.env.prod.local \
+  up -d
+```
+
+4) Verifikasi:
+
+```bash
+docker compose \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.t3small.yml \
+  --env-file deploy/.env.prod.local \
+  ps
+
+curl -i http://127.0.0.1:8080/api/products
+```
+
+5) Stop setelah test:
+
+```bash
+docker compose \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.t3small.yml \
+  --env-file deploy/.env.prod.local \
+  down -v
+```
+
+Catatan: ini simulasi mendekati resource `t3.small`, bukan reproduksi burst-credit behavior AWS T3 secara persis.
