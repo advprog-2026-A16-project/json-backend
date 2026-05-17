@@ -86,8 +86,20 @@ jobs:
             DOCKER_IMAGE=${PROD_DOCKER_IMAGE}
             ENVEOF
 
-            sudo docker compose version
-            echo "${PROD_DOCKERHUB_TOKEN}" | sudo docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
-            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod pull backend
-            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
-            sudo docker image prune -f
+            if ! docker compose version >/dev/null 2>&1; then
+              mkdir -p ~/.docker/cli-plugins
+              ARCH="$(uname -m)"
+              case "$ARCH" in
+                x86_64) ARCH="x86_64" ;;
+                aarch64|arm64) ARCH="aarch64" ;;
+                *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+              esac
+              curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-${ARCH}" -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+            fi
+
+            docker compose version
+            echo "${PROD_DOCKERHUB_TOKEN}" | docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
+            docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod pull backend
+            docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
+            docker image prune -f
