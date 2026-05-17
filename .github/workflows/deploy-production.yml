@@ -8,12 +8,86 @@ on:
 
 jobs:
   deploy-production-aws:
-    name: TODO - Production Deploy
+    name: Build, Push, and Deploy to EC2
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
+
     steps:
-      - name: TODO
-        run: echo "TODO!"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Docker image tag
+        run: |
+          echo "IMAGE_TAG=main-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:main-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:latest
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          PROD_DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
+          PROD_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          PROD_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
+          script_stop: true
+          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
+          script: |
+            set -euo pipefail
+
+            APP_DIR="/home/ec2-user/apps/json-backend"
+
+            mkdir -p /home/ec2-user/apps
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone https://github.com/${{ github.repository }}.git "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
+
+            if sudo systemctl list-unit-files | grep -q '^json-backend.service'; then
+              sudo systemctl stop json-backend || true
+              sudo systemctl disable json-backend || true
+            fi
+
+            mkdir -p deploy
+            cat > deploy/.env.prod <<ENVEOF
+            APP_ENV=production
+            POSTGRES_DB=${PROD_DB_NAME}
+            POSTGRES_USER=${PROD_DB_USER}
+            POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
+            JWT_SECRET_KEY=${PROD_JWT_SECRET_KEY}
+            DOCKER_IMAGE=${PROD_DOCKER_IMAGE}
+            ENVEOF
+
+            sudo docker compose version
+            echo "${PROD_DOCKERHUB_TOKEN}" | sudo docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
+            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod pull backend
+            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
+            sudo docker image prune -f
