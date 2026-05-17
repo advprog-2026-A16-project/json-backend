@@ -1,0 +1,24 @@
+package id.ac.ui.cs.advprog.jsonbackend.wallet.dto;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Getter
+@Setter
+public class WalletResponse {
+    @NotNull(message = "User ID is required")
+    private UUID userId;
+
+    @NotNull(message = "Amount is required")
+    @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+    private BigDecimal balance;
+
+    public WalletResponse(UUID userId, BigDecimal balance) {
+        this.userId = userId;
+        this.balance = balance;
+    }
+}
