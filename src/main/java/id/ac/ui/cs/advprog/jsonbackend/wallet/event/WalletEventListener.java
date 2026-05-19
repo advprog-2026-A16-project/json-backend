@@ -6,10 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.UserRegisteredEvent;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.event.model.WalletOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.event.repository.WalletOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
@@ -21,13 +22,13 @@ import java.util.UUID;
 public class WalletEventListener {
 
     private final WalletService walletService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final WalletOutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
     public WalletEventListener(WalletService walletService,
-                               ApplicationEventPublisher eventPublisher) {
+                               WalletOutboxEventRepository outboxEventRepository) {
         this.walletService = walletService;
-        this.eventPublisher = eventPublisher;
+        this.outboxEventRepository = outboxEventRepository;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -40,7 +41,7 @@ public class WalletEventListener {
     public void handleOrderOutboxEvent(OrderOutboxEvent event) {
         if (event.getEventType() == OrderEventType.ORDER_CREATED) {
             OrderWalletPayload payload = parseOrderPayload(event.getPayload());
-            processPayment(payload.orderId(), payload.userId(), payload.amount());
+            processPayment(payload.orderId(), payload.userId(), payload.amount(), event.getCorrelationId());
         } else if (event.getEventType() == OrderEventType.ORDER_CANCELLED) {
             OrderWalletPayload payload = parseOrderPayload(event.getPayload());
             walletService.refundForOrder(payload.userId(), payload.amount(), payload.orderId());
@@ -49,23 +50,48 @@ public class WalletEventListener {
 
     @EventListener
     public void handleOrderCreatedEvent(OrderCreatedEvent event) {
-        processPayment(event.getOrderId(), event.getUserId(), event.getAmount());
+        processPayment(event.getOrderId(), event.getUserId(), event.getAmount(), UUID.randomUUID().toString());
     }
 
-    private void processPayment(UUID orderId, UUID userId, BigDecimal amount) {
+    private void processPayment(UUID orderId, UUID userId, BigDecimal amount, String correlationId) {
         try {
             walletService.paymentForOrder(userId, amount, orderId);
-
-            eventPublisher.publishEvent(new id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentSuccessEvent(orderId));
+            appendOutboxEvent(
+                    WalletEventType.PAYMENT_SUCCESS,
+                    orderId,
+                    WalletEventPayloadFactory.paymentSuccessPayload(orderId),
+                    correlationId
+            );
 
         } catch (InsufficientBalanceException | WalletNotFoundException e) {
-            eventPublisher.publishEvent(new id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent(orderId, e.getMessage()));
+            appendPaymentFailedOutboxEvent(orderId, e.getMessage(), correlationId);
 
         } catch (ObjectOptimisticLockingFailureException e) {
-            eventPublisher.publishEvent(new id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent(orderId, "Sistem sedang sibuk, transaksi dibatalkan"));
+            appendPaymentFailedOutboxEvent(orderId, "Sistem sedang sibuk, transaksi dibatalkan", correlationId);
         } catch (Exception e) {
-            eventPublisher.publishEvent(new id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent(orderId, "Terjadi kesalahan internal pada sistem pembayaran"));
+            appendPaymentFailedOutboxEvent(orderId, "Terjadi kesalahan internal pada sistem pembayaran", correlationId);
         }
+    }
+
+    private void appendPaymentFailedOutboxEvent(UUID orderId, String reason, String correlationId) {
+        appendOutboxEvent(
+                WalletEventType.PAYMENT_FAILED,
+                orderId,
+                WalletEventPayloadFactory.paymentFailedPayload(orderId, reason),
+                correlationId
+        );
+    }
+
+    private void appendOutboxEvent(WalletEventType eventType, UUID aggregateId, String payload, String correlationId) {
+        WalletOutboxEvent outboxEvent = WalletOutboxEvent.builder()
+                .eventType(eventType)
+                .aggregateId(aggregateId)
+                .payload(payload)
+                .correlationId(correlationId == null || correlationId.isBlank()
+                        ? UUID.randomUUID().toString()
+                        : correlationId)
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 
     private OrderWalletPayload parseOrderPayload(String payload) {
