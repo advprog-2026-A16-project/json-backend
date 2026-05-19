@@ -17,6 +17,8 @@ import id.ac.ui.cs.advprog.jsonbackend.order.mapper.OrderMapper;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
@@ -79,9 +83,24 @@ public class OrderServiceImpl implements OrderService {
             );
             appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
 
+            log.info(
+                    "Order event: CREATE_SUCCESS orderId={} productId={} titipersId={} quantity={} totalPrice={}",
+                    savedOrder.getId(),
+                    savedOrder.getProductId(),
+                    savedOrder.getTitipersId(),
+                    savedOrder.getQuantity(),
+                    savedOrder.getTotalPrice()
+            );
             applicationMetrics.recordOrderCreateSuccess(elapsed(startNanos));
             return orderMapper.toResponse(savedOrder);
         } catch (RuntimeException exception) {
+            log.warn(
+                    "Order event: CREATE_FAILURE productId={} titipersId={} quantity={} reason={}",
+                    request.getProductId(),
+                    request.getTitipersId(),
+                    request.getQuantity(),
+                    exception.getClass().getSimpleName()
+            );
             applicationMetrics.recordOrderCreateFailure(elapsed(startNanos));
             throw exception;
         }

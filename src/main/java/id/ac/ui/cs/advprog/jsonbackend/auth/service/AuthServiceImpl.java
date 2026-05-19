@@ -17,6 +17,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +30,8 @@ import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
     private final ProfileService profileService;
@@ -85,6 +89,7 @@ public class AuthServiceImpl implements AuthService {
         outboxEventRepository.save(outboxEvent);
 
         String jwtToken = jwtService.generateToken(user);
+        log.info("Auth event: REGISTER_SUCCESS userId={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
         applicationMetrics.recordRegisterSuccess(elapsed(startNanos));
         return new AuthResponse(jwtToken, "Registration successful", user.getEmail(), user.getRole(), user.getId());
     }
@@ -105,9 +110,11 @@ public class AuthServiceImpl implements AuthService {
             );
 
             String jwtToken = jwtService.generateToken(user);
+            log.info("Auth event: LOGIN_SUCCESS userId={} email={}", user.getId(), user.getEmail());
             applicationMetrics.recordLoginSuccess(elapsed(startNanos));
             return new AuthResponse(jwtToken, "Login successful", user.getEmail(), user.getRole(), user.getId());
         } catch (RuntimeException exception) {
+            log.warn("Auth event: LOGIN_FAILURE email={} reason={}", request.email(), exception.getClass().getSimpleName());
             applicationMetrics.recordLoginFailure(elapsed(startNanos));
             throw exception;
         }

@@ -14,6 +14,8 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class KycServiceImpl implements KycService {
+
+    private static final Logger log = LoggerFactory.getLogger(KycServiceImpl.class);
 
     private final KycSubmissionRepository kycRepository;
     private final UserRepository userRepository;
@@ -53,7 +57,9 @@ public class KycServiceImpl implements KycService {
                 .submittedAt(LocalDateTime.now())
                 .build();
 
-        return kycRepository.save(submission);
+        KycSubmission savedSubmission = kycRepository.save(submission);
+        log.info("Auth event: KYC_SUBMITTED submissionId={} userId={}", savedSubmission.getId(), user.getId());
+        return savedSubmission;
     }
 
     @Override
@@ -77,6 +83,7 @@ public class KycServiceImpl implements KycService {
         user.setRole(Role.JASTIPER);
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        log.info("Auth event: KYC_APPROVED submissionId={} userId={}", submissionId, user.getId());
         applicationMetrics.recordKycApprove(elapsed(startNanos));
     }
 
@@ -94,6 +101,7 @@ public class KycServiceImpl implements KycService {
         User user = submission.getUser();
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        log.info("Auth event: KYC_REJECTED submissionId={} userId={}", submissionId, user.getId());
         applicationMetrics.recordKycReject(elapsed(startNanos));
     }
 

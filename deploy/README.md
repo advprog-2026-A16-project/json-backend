@@ -68,7 +68,14 @@ cd /home/ec2-user/apps/json-backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod ps
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f db
+docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f proxy
 ```
+
+Catatan logging:
+
+- Backend logs tetap menggunakan `stdout/stderr`, jadi inspeksi utama tetap lewat `docker compose logs -f backend`
+- Nginx access/error logs tersedia lewat `docker compose logs -f proxy`
+- `X-Request-ID` diteruskan dari nginx ke backend agar request bisa ditelusuri lintas proxy dan aplikasi
 
 ## 5. Monitoring stack
 

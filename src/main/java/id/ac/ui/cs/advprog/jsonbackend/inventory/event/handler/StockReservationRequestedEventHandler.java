@@ -5,6 +5,8 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReservationRequested
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.ProcessedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.ProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,8 @@ import java.time.Duration;
 
 @Component
 public class StockReservationRequestedEventHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(StockReservationRequestedEventHandler.class);
 
     private final ProductService productService;
     private final ProcessedEventRepository processedEventRepository;
@@ -42,8 +46,12 @@ public class StockReservationRequestedEventHandler {
                     .eventId(event.eventId())
                     .handlerName(handlerName)
                     .build());
+            log.info("Inventory event: RESERVE_STOCK_SUCCESS eventId={} productId={} quantity={}",
+                    event.eventId(), event.productId(), event.quantity());
             applicationMetrics.recordReserveStockSuccess(elapsed(startNanos));
         } catch (RuntimeException exception) {
+            log.warn("Inventory event: RESERVE_STOCK_FAILURE eventId={} productId={} quantity={} reason={}",
+                    event.eventId(), event.productId(), event.quantity(), exception.getClass().getSimpleName());
             applicationMetrics.recordReserveStockFailure(elapsed(startNanos));
             throw exception;
         }
