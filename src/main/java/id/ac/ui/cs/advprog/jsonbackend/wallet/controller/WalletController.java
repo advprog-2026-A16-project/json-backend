@@ -1,16 +1,22 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/wallet")
@@ -23,23 +29,40 @@ public class WalletController {
     }
 
     @PostMapping("/top-up")
-    public WalletResponse topUp(@RequestBody TopUpRequest request){
+    public WalletResponse topUp(@AuthenticationPrincipal User user, @Valid @RequestBody TopUpRequest request){
+        request.setUserId(authenticatedUserId(user));
         return walletService.topUp(request);
     }
 
     @PostMapping("/withdraw")
-    public WalletResponse withdraw(@RequestBody WithdrawRequest request){
+    public WalletResponse withdraw(@AuthenticationPrincipal User user, @Valid @RequestBody WithdrawRequest request){
+        request.setUserId(authenticatedUserId(user));
         return walletService.withdraw(request);
     }
 
     @PostMapping("/payment")
-    public WalletResponse payment(@RequestBody PaymentRequest request){
+    public WalletResponse payment(@AuthenticationPrincipal User user, @Valid @RequestBody PaymentRequest request){
+        request.setUserId(authenticatedUserId(user));
         return walletService.payment(request);
     }
 
     @PostMapping("/refund")
-    public WalletResponse refund(@RequestBody RefundRequest request){
+    public WalletResponse refund(@AuthenticationPrincipal User user, @Valid @RequestBody RefundRequest request){
+        requireAdmin(user);
         return walletService.refund(request);
+    }
+
+    private UUID authenticatedUserId(User user) {
+        if (user == null || user.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Authenticated user is required");
+        }
+        return user.getId();
+    }
+
+    private void requireAdmin(User user) {
+        if (user == null || user.getRole() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)
@@ -67,5 +90,13 @@ public class WalletController {
         response.put("message", "Wah, antrean transaksimu tabrakan nih. Coba klik bayar sekali lagi ya!");
 
         return new org.springframework.http.ResponseEntity<>(response, org.springframework.http.HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidWalletRequest(IllegalArgumentException e) {
+        Map<String, String> response = new HashMap<>();
+        response.put("error", "Request tidak valid");
+        response.put("message", e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 }

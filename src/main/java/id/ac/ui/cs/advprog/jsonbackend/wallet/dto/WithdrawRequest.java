@@ -10,7 +10,6 @@ import lombok.*;
 @Getter
 @Setter
 public class WithdrawRequest {
-    @NotNull(message = "User ID is required")
     private UUID userId;
 
     @NotNull(message = "Amount is required")
