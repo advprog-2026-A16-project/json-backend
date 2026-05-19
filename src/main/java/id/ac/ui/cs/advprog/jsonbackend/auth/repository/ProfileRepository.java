@@ -13,6 +13,13 @@ import java.util.UUID;
 public interface ProfileRepository extends JpaRepository<Profile, UUID> {
 
     Optional<Profile> findByUserId(UUID userId);
+
+    @Query("SELECT p FROM Profile p JOIN FETCH p.user u WHERE u.id = :userId")
+    Optional<Profile> findByUserIdWithUser(@Param("userId") UUID userId);
+
+    @Query("SELECT p FROM Profile p JOIN FETCH p.user u WHERE u.email = :email")
+    Optional<Profile> findByUserEmailWithUser(@Param("email") String email);
+
     boolean existsByUsername(String username);
     @Query("SELECT p FROM Profile p JOIN FETCH p.user u WHERE u.accountStatus = :status")
     List<Profile> findAllByUserAccountStatus(@Param("status") AccountStatus status);

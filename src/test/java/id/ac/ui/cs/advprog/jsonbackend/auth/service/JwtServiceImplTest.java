@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,6 +39,7 @@ class JwtServiceImplTest {
         jwtService = new JwtServiceImpl(keyProvider, props);
 
         user = new User("test@email.com", "password", Role.TITIPERS);
+        user.setId(UUID.randomUUID());
     }
 
     @Test
@@ -77,6 +79,7 @@ class JwtServiceImplTest {
     void isTokenValid_shouldReturnFalse_forDifferentUser() {
         String token = jwtService.generateToken(user);
         User differentUser = new User("other@email.com", "password", Role.TITIPERS);
+        differentUser.setId(UUID.randomUUID());
         assertFalse(jwtService.isTokenValid(token, differentUser));
     }
 
