@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
@@ -31,11 +33,21 @@ class WalletControllerTest {
     private WalletController walletController;
 
     private UUID userId;
+    private User user;
+    private User admin;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         userId = UUID.randomUUID();
+
+        user = new User();
+        user.setId(userId);
+        user.setRole(Role.TITIPERS);
+
+        admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(Role.ADMIN);
     }
 
     @Test
@@ -50,7 +62,7 @@ class WalletControllerTest {
 
         when(walletService.topUp(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.topUp(request);
+        WalletResponse response = walletController.topUp(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("150000"), response.getBalance());
@@ -70,7 +82,7 @@ class WalletControllerTest {
 
         when(walletService.withdraw(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.withdraw(request);
+        WalletResponse response = walletController.withdraw(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("80000"), response.getBalance());
@@ -89,7 +101,7 @@ class WalletControllerTest {
                 .thenThrow(new RuntimeException("Saldo tidak cukup"));
 
         assertThrows(RuntimeException.class, () -> {
-            walletController.withdraw(request);
+            walletController.withdraw(user, request);
         });
 
         verify(walletService, times(1)).withdraw(request);
@@ -106,7 +118,7 @@ class WalletControllerTest {
 
         when(walletService.payment(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.payment(request);
+        WalletResponse response = walletController.payment(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("50000"), response.getBalance());
@@ -125,7 +137,7 @@ class WalletControllerTest {
 
         when(walletService.refund(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.refund(request);
+        WalletResponse response = walletController.refund(admin, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("150000"), response.getBalance());

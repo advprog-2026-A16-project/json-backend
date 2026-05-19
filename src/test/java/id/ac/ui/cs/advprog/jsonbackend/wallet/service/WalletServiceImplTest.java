@@ -8,6 +8,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Transaction;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.model.TransactionType;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.WalletRepository;
 
@@ -50,7 +52,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("50000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         WalletResponse response = walletService.topUp(request);
@@ -68,7 +70,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("30000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         WalletResponse response = walletService.withdraw(request);
@@ -86,7 +88,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("200000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         assertThrows(RuntimeException.class, () -> walletService.withdraw(request));
@@ -100,7 +102,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("50000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         WalletResponse response = walletService.payment(request);
@@ -117,7 +119,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("150000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         assertThrows(InsufficientBalanceException.class, () -> walletService.payment(request));
@@ -131,7 +133,7 @@ public class WalletServiceImplTest {
         request.setUserId(userId);
         request.setAmount(new BigDecimal("50000"));
 
-        when(walletRepository.findByUserId(userId))
+        when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet));
 
         WalletResponse response = walletService.refund(request);
@@ -140,5 +142,38 @@ public class WalletServiceImplTest {
 
         verify(walletRepository, times(1)).save(wallet);
         verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    void testCreateWalletIfAbsentCreatesNewWallet() {
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.createWalletIfAbsent(userId);
+
+        assertEquals(userId, response.getUserId());
+        assertEquals(BigDecimal.ZERO, response.getBalance());
+        verify(walletRepository).save(any(Wallet.class));
+    }
+
+    @Test
+    void testPaymentForOrderIsIdempotent() {
+        UUID orderId = UUID.randomUUID();
+        Transaction existing = new Transaction();
+        existing.setUserId(userId);
+        existing.setAmount(new BigDecimal("50000"));
+        existing.setType(TransactionType.PAYMENT);
+        existing.setReferenceId(orderId);
+
+        when(transactionRepository.findByUserIdAndTypeAndReferenceId(userId, TransactionType.PAYMENT, orderId))
+                .thenReturn(Optional.of(existing));
+        when(walletRepository.findByUserIdForUpdate(userId))
+                .thenReturn(Optional.of(wallet));
+
+        WalletResponse response = walletService.paymentForOrder(userId, new BigDecimal("50000"), orderId);
+
+        assertEquals(new BigDecimal("100000"), response.getBalance());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
     }
 }
