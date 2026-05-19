@@ -53,7 +53,10 @@ Set di `Settings -> Secrets and variables -> Actions`:
   3. SSH ke EC2
   4. Pull source terbaru branch `main`
   5. Generate `deploy/.env.prod` dari secrets
-  6. `docker login`, `docker compose pull backend`, lalu `docker compose up -d`
+  6. Menulis image aktif ke `deploy/.current-version`
+  7. Menjalankan smoke health check setelah deploy
+
+Rollback manual tersedia lewat workflow `Rollback Production` dengan input tag image Docker Hub.
 
 ## 4. Operasional di server
 
@@ -69,6 +72,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod ps
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f db
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f proxy
+cat deploy/.current-version
 ```
 
 Catatan logging:
@@ -76,6 +80,12 @@ Catatan logging:
 - Backend logs tetap menggunakan `stdout/stderr`, jadi inspeksi utama tetap lewat `docker compose logs -f backend`
 - Nginx access/error logs tersedia lewat `docker compose logs -f proxy`
 - `X-Request-ID` diteruskan dari nginx ke backend agar request bisa ditelusuri lintas proxy dan aplikasi
+
+Verifikasi deploy/rollback:
+
+```bash
+./deploy/scripts/post-deploy-healthcheck.sh deploy/docker-compose.prod.yml deploy/.env.prod
+```
 
 ## 5. Monitoring stack
 
