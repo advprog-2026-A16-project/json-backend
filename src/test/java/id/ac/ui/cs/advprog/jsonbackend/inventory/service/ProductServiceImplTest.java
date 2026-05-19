@@ -93,6 +93,47 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void createProductThrowsWhenImageUrlInvalid() {
+        ProductRequest request = sampleRequest();
+        request.setImageUrl("ftp://example.com/image.jpg");
+
+        assertThrows(InvalidProductException.class, () -> productService.create(request));
+
+        verify(productMapper, never()).toEntity(request);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createProductAllowsValidHttpsImageUrl() {
+        ProductRequest request = sampleRequest();
+        request.setImageUrl("https://cdn.example.com/items/1.jpg");
+        Product entity = sampleEntity();
+        ProductResponse response = sampleResponse(entity.getId());
+
+        when(productMapper.toEntity(request)).thenReturn(entity);
+        when(productRepository.save(entity)).thenReturn(entity);
+        when(productMapper.toResponse(entity)).thenReturn(response);
+
+        ProductResponse result = productService.create(request);
+
+        assertEquals(response.getId(), result.getId());
+        verify(productMapper, times(1)).toEntity(request);
+        verify(productRepository, times(1)).save(entity);
+        verify(productMapper, times(1)).toResponse(entity);
+    }
+
+    @Test
+    void createProductThrowsWhenImageUrlTooLong() {
+        ProductRequest request = sampleRequest();
+        request.setImageUrl("https://example.com/" + "a".repeat(2050));
+
+        assertThrows(InvalidProductException.class, () -> productService.create(request));
+
+        verify(productMapper, never()).toEntity(request);
+        verify(productRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void createProductThrowsWhenRequestNull() {
         assertThrows(InvalidProductException.class, () -> productService.create(null));
         verify(productMapper, never()).toEntity(org.mockito.ArgumentMatchers.any());
@@ -412,6 +453,7 @@ class ProductServiceImplTest {
         return ProductRequest.builder()
                 .name("Sneakers Limited Edition")
                 .description("Beli di US")
+                .imageUrl("https://cdn.example.com/products/sneakers.jpg")
                 .price(new BigDecimal("1500000"))
                 .stock(10)
                 .originCountry("US")
@@ -427,6 +469,7 @@ class ProductServiceImplTest {
                 .id(id)
                 .name("Sneakers Limited Edition")
                 .description("Beli di US")
+                .imageUrl("https://cdn.example.com/products/sneakers.jpg")
                 .price(new BigDecimal("1500000"))
                 .stock(10)
                 .originCountry("US")
@@ -443,6 +486,7 @@ class ProductServiceImplTest {
                 .id(id)
                 .name("Sneakers Limited Edition")
                 .description("Beli di US")
+                .imageUrl("https://cdn.example.com/products/sneakers.jpg")
                 .price(new BigDecimal("1500000"))
                 .stock(10)
                 .originCountry("US")
