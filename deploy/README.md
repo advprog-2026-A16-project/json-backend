@@ -70,7 +70,28 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod log
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f db
 ```
 
-## 5. Local t3.small-like setup for load test/profiling
+## 5. Monitoring stack
+
+Monitoring disediakan sebagai stack terpisah agar provisioning tetap reproducible dari repo:
+
+```bash
+cd /home/ec2-user/apps/json-backend/deploy/monitoring
+docker compose -f docker-compose.monitoring.yml --env-file ../.env.prod up -d
+```
+
+Endpoint utama:
+
+- Prometheus: `http://<server>:9090`
+- Grafana: `http://<server>:3001`
+
+Grafana sudah otomatis terhubung ke Prometheus dan memuat dashboard `JSON Backend Overview`.
+
+Catatan:
+
+- Backend metrics di-scrape langsung ke `backend:8080/actuator/prometheus` lewat Docker network internal.
+- Nginx memblokir akses publik ke `/actuator/prometheus`.
+
+## 6. Local t3.small-like setup for load test/profiling
 
 Tujuan: simulasi keterbatasan resource EC2 `t3.small` (2 vCPU, 2 GiB RAM) di environment lokal untuk profiling.
 

@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
@@ -19,6 +20,7 @@ import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -31,48 +33,58 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final ProductService productService;
     private final OrderOutboxEventRepository outboxEventRepository;
+    private final ApplicationMetrics applicationMetrics;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderMapper orderMapper,
                             ProductService productService,
-                            OrderOutboxEventRepository outboxEventRepository) {
+                            OrderOutboxEventRepository outboxEventRepository,
+                            ApplicationMetrics applicationMetrics) {
         this.orderRepository = orderRepository;
         this.orderMapper = orderMapper;
         this.productService = productService;
         this.outboxEventRepository = outboxEventRepository;
+        this.applicationMetrics = applicationMetrics;
     }
 
     @Override
     public OrderResponse create(OrderRequest request) {
-        ProductResponse product = productService.findById(request.getProductId());
+        long startNanos = System.nanoTime();
+        try {
+            ProductResponse product = productService.findById(request.getProductId());
 
-        if (product.getStock() < request.getQuantity()) {
-            throw new InvalidOrderException("Stok tidak mencukupi untuk pesanan ini");
+            if (product.getStock() < request.getQuantity()) {
+                throw new InvalidOrderException("Stok tidak mencukupi untuk pesanan ini");
+            }
+
+            BigDecimal totalPrice = product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+
+            Order order = orderMapper.toEntity(request);
+            order.setJastiperId(product.getJastiperId());
+            order.setTotalPrice(totalPrice);
+            order.setStatus(OrderStatus.PAID);
+
+            Order savedOrder = orderRepository.save(order);
+
+            // Mempublikasikan event untuk Modul Wallet (Pembayaran)
+            String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
+                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
+                    savedOrder.getTitipersId(), savedOrder.getTotalPrice()
+            );
+            appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
+
+            // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
+            String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
+                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
+            );
+            appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
+
+            applicationMetrics.recordOrderCreateSuccess(elapsed(startNanos));
+            return orderMapper.toResponse(savedOrder);
+        } catch (RuntimeException exception) {
+            applicationMetrics.recordOrderCreateFailure(elapsed(startNanos));
+            throw exception;
         }
-
-        BigDecimal totalPrice = product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
-
-        Order order = orderMapper.toEntity(request);
-        order.setJastiperId(product.getJastiperId());
-        order.setTotalPrice(totalPrice);
-        order.setStatus(OrderStatus.PAID);
-
-        Order savedOrder = orderRepository.save(order);
-
-        // Mempublikasikan event untuk Modul Wallet (Pembayaran)
-        String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
-                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
-                savedOrder.getTitipersId(), savedOrder.getTotalPrice()
-        );
-        appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
-
-        // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
-        String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
-                savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
-        );
-        appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
-
-        return orderMapper.toResponse(savedOrder);
     }
 
     @Override
@@ -194,5 +206,9 @@ public class OrderServiceImpl implements OrderService {
                 .correlationId(UUID.randomUUID().toString())
                 .build();
         outboxEventRepository.save(outboxEvent);
+    }
+
+    private Duration elapsed(long startNanos) {
+        return Duration.ofNanos(System.nanoTime() - startNanos);
     }
 }

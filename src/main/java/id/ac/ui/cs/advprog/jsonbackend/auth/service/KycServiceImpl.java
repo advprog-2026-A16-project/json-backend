@@ -12,10 +12,12 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.KycSubmissionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +29,7 @@ public class KycServiceImpl implements KycService {
     private final KycSubmissionRepository kycRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
+    private final ApplicationMetrics applicationMetrics;
 
     @Override
     @Transactional
@@ -62,6 +65,7 @@ public class KycServiceImpl implements KycService {
     @Override
     @Transactional
     public void approveKyc(UUID submissionId) {
+        long startNanos = System.nanoTime();
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
@@ -73,11 +77,13 @@ public class KycServiceImpl implements KycService {
         user.setRole(Role.JASTIPER);
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        applicationMetrics.recordKycApprove(elapsed(startNanos));
     }
 
     @Override
     @Transactional
     public void rejectKyc(UUID submissionId) {
+        long startNanos = System.nanoTime();
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
@@ -88,5 +94,10 @@ public class KycServiceImpl implements KycService {
         User user = submission.getUser();
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        applicationMetrics.recordKycReject(elapsed(startNanos));
+    }
+
+    private Duration elapsed(long startNanos) {
+        return Duration.ofNanos(System.nanoTime() - startNanos);
     }
 }

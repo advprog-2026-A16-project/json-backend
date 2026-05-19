@@ -16,12 +16,14 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Service
@@ -33,24 +35,28 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuthOutboxEventRepository outboxEventRepository;
+    private final ApplicationMetrics applicationMetrics;
 
     public AuthServiceImpl(UserRepository userRepository,
                            ProfileService profileService,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
                            AuthenticationManager authenticationManager,
-                           AuthOutboxEventRepository outboxEventRepository) {
+                           AuthOutboxEventRepository outboxEventRepository,
+                           ApplicationMetrics applicationMetrics) {
         this.userRepository = userRepository;
         this.profileService = profileService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.outboxEventRepository = outboxEventRepository;
+        this.applicationMetrics = applicationMetrics;
     }
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        long startNanos = System.nanoTime();
         validateRegisterRequest(request);
 
         User user = new User(
@@ -79,24 +85,32 @@ public class AuthServiceImpl implements AuthService {
         outboxEventRepository.save(outboxEvent);
 
         String jwtToken = jwtService.generateToken(user);
+        applicationMetrics.recordRegisterSuccess(elapsed(startNanos));
         return new AuthResponse(jwtToken, "Registration successful", user.getEmail(), user.getRole(), user.getId());
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        long startNanos = System.nanoTime();
+        try {
+            User user = userRepository.findByEmail(request.email())
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (user.getAccountStatus() == AccountStatus.BANNED) {
-            throw new AccountBannedException("Your account has been banned.");
+            if (user.getAccountStatus() == AccountStatus.BANNED) {
+                throw new AccountBannedException("Your account has been banned.");
+            }
+
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+            );
+
+            String jwtToken = jwtService.generateToken(user);
+            applicationMetrics.recordLoginSuccess(elapsed(startNanos));
+            return new AuthResponse(jwtToken, "Login successful", user.getEmail(), user.getRole(), user.getId());
+        } catch (RuntimeException exception) {
+            applicationMetrics.recordLoginFailure(elapsed(startNanos));
+            throw exception;
         }
-
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
-
-        String jwtToken = jwtService.generateToken(user);
-        return new AuthResponse(jwtToken, "Login successful", user.getEmail(), user.getRole(), user.getId());
     }
 
     private void validateRegisterRequest(RegisterRequest request) {
@@ -108,5 +122,9 @@ public class AuthServiceImpl implements AuthService {
                     "Email already registered"
             );
         }
+    }
+
+    private Duration elapsed(long startNanos) {
+        return Duration.ofNanos(System.nanoTime() - startNanos);
     }
 }
