@@ -20,6 +20,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.security.Principal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,6 +47,7 @@ class ProfileControllerTest {
 
     private User mockUser;
     private UUID userId;
+    private Principal principal;
 
     @BeforeEach
     void setUp() {
@@ -59,6 +61,7 @@ class ProfileControllerTest {
         mockUser.setId(userId);
         mockUser.setEmail("test@email.com");
         mockUser.setRole(Role.TITIPERS);
+        principal = () -> "test@email.com";
     }
 
     @Test
@@ -72,7 +75,7 @@ class ProfileControllerTest {
                         .build())
                 .build();
 
-        when(profileService.getProfileByUserId(any()))
+        when(profileService.getOrCreateProfileByEmail(any()))
                 .thenReturn(mockProfile);
 
         mockMvc.perform(get("/api/profile/me")
@@ -84,7 +87,7 @@ class ProfileControllerTest {
     @Test
     @WithMockUser(username = "test@email.com")
     void whenGetMyProfile_ProfileNotFound_ShouldReturnNotFound() throws Exception {
-        when(profileService.getProfileByUserId(any()))
+        when(profileService.getOrCreateProfileByEmail(any()))
                 .thenThrow(new ProfileNotFoundException("Profile not found"));
 
         mockMvc.perform(get("/api/profile/me")
@@ -112,15 +115,15 @@ class ProfileControllerTest {
                 .rating(0.0)
                 .build();
 
-        when(profileService.updateProfile(
-                eq(userId),
+        when(profileService.updateProfileByEmail(
+                eq("test@email.com"),
                 eq(request.username()),
                 eq(request.fullName()),
                 eq(request.bio())
         )).thenReturn(updatedProfile);
 
         ResponseEntity<ProfileResponse> response =
-                profileController.updateProfile(mockUser, request);
+                profileController.updateProfile(principal, request);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
@@ -132,8 +135,8 @@ class ProfileControllerTest {
         assertEquals("This is a new bio", body.bio());
         assertEquals("test@email.com", body.email());
 
-        verify(profileService, times(1)).updateProfile(
-                userId,
+        verify(profileService, times(1)).updateProfileByEmail(
+                "test@email.com",
                 "new_username",
                 "New Full Name",
                 "This is a new bio"

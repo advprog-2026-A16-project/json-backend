@@ -1,18 +1,15 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.config.JwtProperties;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.security.JwtKeyProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,7 +38,13 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public String generateToken(UserDetails userDetails) {
-        return generateToken(userDetails, Collections.emptyMap());
+        Map<String, Object> claims = new HashMap<>();
+        if (userDetails instanceof User user) {
+            claims.put("email", user.getEmail());
+            claims.put("role", user.getRole().name());
+            claims.put("userId", user.getId().toString());
+        }
+        return generateToken(userDetails, claims);
     }
 
     @Override

@@ -2,13 +2,14 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ProfileResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.UpdateProfileRequest;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
-import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -18,22 +19,29 @@ public class ProfileController {
     private final ProfileService profileService;
 
     @GetMapping("/me")
-    public ResponseEntity<ProfileResponse> getMyProfile(@AuthenticationPrincipal User user) {
-        Profile profile = profileService.getProfileByUserId(user.getId());
+    public ResponseEntity<ProfileResponse> getMyProfile(Principal principal) {
+        Profile profile = profileService.getOrCreateProfileByEmail(extractCurrentEmail(principal));
         return ResponseEntity.ok(ProfileResponse.from(profile));
     }
 
     @PutMapping("/me")
     public ResponseEntity<ProfileResponse> updateProfile(
-            @AuthenticationPrincipal User user,
+            Principal principal,
             @RequestBody UpdateProfileRequest request) {
 
-        Profile updated = profileService.updateProfile(
-                user.getId(),
+        Profile updated = profileService.updateProfileByEmail(
+                extractCurrentEmail(principal),
                 request.username(),
                 request.fullName(),
                 request.bio()
         );
         return ResponseEntity.ok(ProfileResponse.from(updated));
+    }
+
+    private String extractCurrentEmail(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            throw new UserNotFoundException("Authenticated user not found");
+        }
+        return principal.getName();
     }
 }

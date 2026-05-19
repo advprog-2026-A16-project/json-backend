@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,12 +52,18 @@ class AuthControllerTest {
 
         registerResponse = new AuthResponse(
                 "token",
-                "Registrasi berhasil"
+                "Registrasi berhasil",
+                "test@example.com",
+                Role.TITIPERS,
+                UUID.randomUUID()
         );
 
         loginResponse = new AuthResponse(
                 "token",
-                "Login berhasil"
+                "Login berhasil",
+                "test@example.com",
+                Role.TITIPERS,
+                UUID.randomUUID()
         );
     }
 

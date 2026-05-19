@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
         outboxEventRepository.save(outboxEvent);
 
         String jwtToken = jwtService.generateToken(user);
-        return new AuthResponse(jwtToken, "Registration successful");
+        return new AuthResponse(jwtToken, "Registration successful", user.getEmail(), user.getRole(), user.getId());
     }
 
     @Override
@@ -96,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
         );
 
         String jwtToken = jwtService.generateToken(user);
-        return new AuthResponse(jwtToken, "Login successful");
+        return new AuthResponse(jwtToken, "Login successful", user.getEmail(), user.getRole(), user.getId());
     }
 
     private void validateRegisterRequest(RegisterRequest request) {

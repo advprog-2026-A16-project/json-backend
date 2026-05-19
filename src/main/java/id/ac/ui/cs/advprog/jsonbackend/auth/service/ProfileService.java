@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface ProfileService {
     Profile createProfileForUser(User user, String requestedUsername);
     Profile getProfileByUserId(UUID userId);
+    Profile getOrCreateProfileByEmail(String email);
     Profile updateProfile(UUID userId, String username, String fullName, String bio);
+    Profile updateProfileByEmail(String email, String username, String fullName, String bio);
     void recordSuccessfulTransaction(UUID userId, Double rating);
 }
