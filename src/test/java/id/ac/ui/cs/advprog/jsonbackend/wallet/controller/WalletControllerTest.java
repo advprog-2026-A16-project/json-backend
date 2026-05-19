@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -76,6 +77,7 @@ class WalletControllerTest {
         WithdrawRequest request = new WithdrawRequest();
         request.setUserId(userId);
         request.setAmount(new BigDecimal("20000"));
+        request.setDestinationAccount("BCA 1234567890");
 
         WalletResponse mockResponse =
                 new WalletResponse(userId, new BigDecimal("80000"));
@@ -96,6 +98,7 @@ class WalletControllerTest {
         WithdrawRequest request = new WithdrawRequest();
         request.setUserId(userId);
         request.setAmount(new BigDecimal("200000"));
+        request.setDestinationAccount("BCA 1234567890");
 
         when(walletService.withdraw(request))
                 .thenThrow(new RuntimeException("Saldo tidak cukup"));
@@ -143,6 +146,47 @@ class WalletControllerTest {
         assertEquals(new BigDecimal("150000"), response.getBalance());
 
         verify(walletService, times(1)).refund(request);
+    }
+
+    @Test
+    void testRequestTopUpUsesAuthenticatedUser() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("50000"));
+        TransactionResponse mockResponse = new TransactionResponse();
+        mockResponse.setUserId(userId);
+
+        when(walletService.requestTopUp(request)).thenReturn(mockResponse);
+
+        TransactionResponse response = walletController.requestTopUp(user, request);
+
+        assertEquals(userId, response.getUserId());
+        assertEquals(userId, request.getUserId());
+        verify(walletService).requestTopUp(request);
+    }
+
+    @Test
+    void testVerifyTransactionRequiresAdmin() {
+        VerifyTransactionRequest request = new VerifyTransactionRequest();
+        request.setSuccess(true);
+
+        assertThrows(RuntimeException.class, () -> walletController.verifyTransaction(user, UUID.randomUUID(), request));
+
+        verify(walletService, never()).verifyTransaction(any(), any());
+    }
+
+    @Test
+    void testGetTransactionHistoryUsesAuthenticatedUser() {
+        TransactionResponse response = new TransactionResponse();
+        response.setUserId(userId);
+
+        when(walletService.getTransactionHistory(userId)).thenReturn(List.of(response));
+
+        List<TransactionResponse> result = walletController.getTransactionHistory(user);
+
+        assertEquals(1, result.size());
+        assertEquals(userId, result.get(0).getUserId());
+        verify(walletService).getTransactionHistory(userId);
     }
 
     @Test
