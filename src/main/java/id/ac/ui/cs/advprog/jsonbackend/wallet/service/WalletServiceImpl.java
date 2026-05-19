@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -52,7 +54,48 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse withdraw(WithdrawRequest request){
+        validateDestinationAccount(request.getDestinationAccount());
         return applyTransaction(request.getUserId(), request.getAmount(), TransactionType.WITHDRAWAL, null);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse requestTopUp(TopUpRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        getWallet(request.getUserId());
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDescription("Top-up pending verification");
+
+        return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse requestWithdrawal(WithdrawRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        validateDestinationAccount(request.getDestinationAccount());
+
+        Wallet wallet = getWallet(request.getUserId());
+        if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientBalanceException();
+        }
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.WITHDRAWAL);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDestinationAccount(request.getDestinationAccount().trim());
+        transaction.setDescription("Withdrawal pending verification");
+
+        return TransactionResponse.from(transactionRepository.save(transaction));
     }
 
     @Override
@@ -77,6 +120,50 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletResponse refundForOrder(UUID userId, BigDecimal amount, UUID orderId) {
         return applyTransaction(userId, amount, TransactionType.REFUND, orderId);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse verifyTransaction(UUID transactionId, VerifyTransactionRequest request) {
+        if (transactionId == null) {
+            throw new IllegalArgumentException("Transaction ID is required");
+        }
+        if (request == null || request.getSuccess() == null) {
+            throw new IllegalArgumentException("Verification result is required");
+        }
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+        if (transaction.getStatus() != TransactionStatus.PENDING) {
+            return TransactionResponse.from(transaction);
+        }
+
+        if (Boolean.TRUE.equals(request.getSuccess())) {
+            Wallet wallet = getWallet(transaction.getUserId());
+            applyVerifiedMutation(wallet, transaction);
+            walletRepository.save(wallet);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+        } else {
+            transaction.setStatus(TransactionStatus.FAILED);
+        }
+
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            transaction.setDescription(request.getDescription().trim());
+        }
+        transaction.setVerifiedAt(LocalDateTime.now());
+
+        return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getTransactionHistory(UUID userId) {
+        validateUserId(userId);
+        return transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(TransactionResponse::from)
+                .toList();
     }
 
     private WalletResponse applyTransaction(UUID userId, BigDecimal amount, TransactionType type, UUID referenceId) {
@@ -105,9 +192,28 @@ public class WalletServiceImpl implements WalletService {
         trx.setAmount(amount);
         trx.setType(type);
         trx.setReferenceId(referenceId);
+        trx.setStatus(TransactionStatus.SUCCESS);
+        trx.setDescription(defaultDescription(type));
         transactionRepository.save(trx);
 
         return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    }
+
+    private void applyVerifiedMutation(Wallet wallet, Transaction transaction) {
+        if (transaction.getType() == TransactionType.TOP_UP || transaction.getType() == TransactionType.REFUND) {
+            wallet.credit(transaction.getAmount());
+        } else {
+            wallet.debit(transaction.getAmount());
+        }
+    }
+
+    private String defaultDescription(TransactionType type) {
+        return switch (type) {
+            case TOP_UP -> "Top-up balance";
+            case WITHDRAWAL -> "Withdrawal balance";
+            case PAYMENT -> "Payment for order";
+            case REFUND -> "Refund balance";
+        };
     }
 
     private void validateUserId(UUID userId) {
@@ -119,6 +225,12 @@ public class WalletServiceImpl implements WalletService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+    }
+
+    private void validateDestinationAccount(String destinationAccount) {
+        if (destinationAccount == null || destinationAccount.isBlank()) {
+            throw new IllegalArgumentException("Destination account is required");
         }
     }
 }

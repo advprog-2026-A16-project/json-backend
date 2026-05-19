@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,10 +35,22 @@ public class WalletController {
         return walletService.topUp(request);
     }
 
+    @PostMapping("/top-up/request")
+    public TransactionResponse requestTopUp(@AuthenticationPrincipal User user, @Valid @RequestBody TopUpRequest request){
+        request.setUserId(authenticatedUserId(user));
+        return walletService.requestTopUp(request);
+    }
+
     @PostMapping("/withdraw")
     public WalletResponse withdraw(@AuthenticationPrincipal User user, @Valid @RequestBody WithdrawRequest request){
         request.setUserId(authenticatedUserId(user));
         return walletService.withdraw(request);
+    }
+
+    @PostMapping("/withdraw/request")
+    public TransactionResponse requestWithdrawal(@AuthenticationPrincipal User user, @Valid @RequestBody WithdrawRequest request){
+        request.setUserId(authenticatedUserId(user));
+        return walletService.requestWithdrawal(request);
     }
 
     @PostMapping("/payment")
@@ -50,6 +63,20 @@ public class WalletController {
     public WalletResponse refund(@AuthenticationPrincipal User user, @Valid @RequestBody RefundRequest request){
         requireAdmin(user);
         return walletService.refund(request);
+    }
+
+    @PatchMapping("/transactions/{transactionId}/verify")
+    public TransactionResponse verifyTransaction(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID transactionId,
+            @Valid @RequestBody VerifyTransactionRequest request) {
+        requireAdmin(user);
+        return walletService.verifyTransaction(transactionId, request);
+    }
+
+    @GetMapping("/transactions")
+    public List<TransactionResponse> getTransactionHistory(@AuthenticationPrincipal User user) {
+        return walletService.getTransactionHistory(authenticatedUserId(user));
     }
 
     private UUID authenticatedUserId(User user) {

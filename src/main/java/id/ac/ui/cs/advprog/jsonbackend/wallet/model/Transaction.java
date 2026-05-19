@@ -35,6 +35,27 @@ public class Transaction {
     @Column(name = "reference_id")
     private UUID referenceId;
 
-    @Column(nullable = false, updatable = false)
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status = TransactionStatus.SUCCESS;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "destination_account")
+    private String destinationAccount;
+
+    @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime verifiedAt;
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = TransactionStatus.SUCCESS;
+        }
+    }
 }
