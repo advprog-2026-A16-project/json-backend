@@ -4,13 +4,14 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.event.UserRegisteredEvent;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.event.model.WalletOutboxEvent;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.event.repository.WalletOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
@@ -26,7 +27,7 @@ class WalletEventListenerTest {
     private WalletService walletService;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private WalletOutboxEventRepository outboxEventRepository;
 
     private WalletEventListener walletEventListener;
 
@@ -38,7 +39,7 @@ class WalletEventListenerTest {
         MockitoAnnotations.openMocks(this);
         userId = UUID.randomUUID();
         orderId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        walletEventListener = new WalletEventListener(walletService, eventPublisher);
+        walletEventListener = new WalletEventListener(walletService, outboxEventRepository);
     }
 
     @Test
@@ -49,11 +50,11 @@ class WalletEventListenerTest {
 
         verify(walletService, times(1)).paymentForOrder(userId, new BigDecimal("50000"), orderId);
 
-        ArgumentCaptor<id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentSuccessEvent> eventCaptor =
-                ArgumentCaptor.forClass(id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentSuccessEvent.class);
-        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        ArgumentCaptor<WalletOutboxEvent> eventCaptor = ArgumentCaptor.forClass(WalletOutboxEvent.class);
+        verify(outboxEventRepository, times(1)).save(eventCaptor.capture());
 
-        assertEquals(orderId, eventCaptor.getValue().getOrderId());
+        assertEquals(WalletEventType.PAYMENT_SUCCESS, eventCaptor.getValue().getEventType());
+        assertEquals(orderId, eventCaptor.getValue().getAggregateId());
     }
 
     @Test
@@ -66,12 +67,12 @@ class WalletEventListenerTest {
 
         walletEventListener.handleOrderCreatedEvent(event); 
 
-        ArgumentCaptor<id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent> eventCaptor =
-                ArgumentCaptor.forClass(id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent.class);
-        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        ArgumentCaptor<WalletOutboxEvent> eventCaptor = ArgumentCaptor.forClass(WalletOutboxEvent.class);
+        verify(outboxEventRepository, times(1)).save(eventCaptor.capture());
 
-        assertEquals(orderId, eventCaptor.getValue().getOrderId());
-        assertEquals("Saldo tidak mencukupi", eventCaptor.getValue().getReason());
+        assertEquals(WalletEventType.PAYMENT_FAILED, eventCaptor.getValue().getEventType());
+        assertEquals(orderId, eventCaptor.getValue().getAggregateId());
+        assertEquals(true, eventCaptor.getValue().getPayload().contains("Saldo tidak mencukupi"));
     }
 
     @Test
@@ -88,16 +89,12 @@ class WalletEventListenerTest {
 
         walletEventListener.handleOrderCreatedEvent(event);
 
-        ArgumentCaptor<id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent> eventCaptor =
-                ArgumentCaptor.forClass(id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent.class);
+        ArgumentCaptor<WalletOutboxEvent> eventCaptor = ArgumentCaptor.forClass(WalletOutboxEvent.class);
 
-        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        verify(outboxEventRepository, times(1)).save(eventCaptor.capture());
 
-        assertEquals(orderId, eventCaptor.getValue().getOrderId());
-        assertEquals(
-                "Sistem sedang sibuk, transaksi dibatalkan",
-                eventCaptor.getValue().getReason()
-        );
+        assertEquals(WalletEventType.PAYMENT_FAILED, eventCaptor.getValue().getEventType());
+        assertEquals(true, eventCaptor.getValue().getPayload().contains("Sistem sedang sibuk"));
     }
 
     @Test
@@ -114,16 +111,12 @@ class WalletEventListenerTest {
 
         walletEventListener.handleOrderCreatedEvent(event);
 
-        ArgumentCaptor<id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent> eventCaptor =
-                ArgumentCaptor.forClass(id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent.class);
+        ArgumentCaptor<WalletOutboxEvent> eventCaptor = ArgumentCaptor.forClass(WalletOutboxEvent.class);
 
-        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        verify(outboxEventRepository, times(1)).save(eventCaptor.capture());
 
-        assertEquals(orderId, eventCaptor.getValue().getOrderId());
-        assertEquals(
-                "Terjadi kesalahan internal pada sistem pembayaran",
-                eventCaptor.getValue().getReason()
-        );
+        assertEquals(WalletEventType.PAYMENT_FAILED, eventCaptor.getValue().getEventType());
+        assertEquals(true, eventCaptor.getValue().getPayload().contains("Terjadi kesalahan internal"));
     }
 
     @Test
@@ -136,7 +129,7 @@ class WalletEventListenerTest {
         walletEventListener.handleOrderOutboxEvent(event);
 
         verify(walletService).paymentForOrder(userId, new BigDecimal("50000"), orderId);
-        verify(eventPublisher).publishEvent(any(id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentSuccessEvent.class));
+        verify(outboxEventRepository).save(any(WalletOutboxEvent.class));
     }
 
     @Test
@@ -149,7 +142,7 @@ class WalletEventListenerTest {
         walletEventListener.handleOrderOutboxEvent(event);
 
         verify(walletService).refundForOrder(userId, new BigDecimal("50000"), orderId);
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 
     @Test
