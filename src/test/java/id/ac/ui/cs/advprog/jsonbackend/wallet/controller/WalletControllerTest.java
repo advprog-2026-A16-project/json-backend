@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -29,6 +30,9 @@ class WalletControllerTest {
 
     @Mock
     private WalletService walletService;
+
+    @Mock
+    private PaymentNotificationService paymentNotificationService;
 
     @InjectMocks
     private WalletController walletController;
@@ -166,6 +170,24 @@ class WalletControllerTest {
     }
 
     @Test
+    void testRequestTopUpPaymentUsesAuthenticatedUser() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("50000"));
+        PaymentGatewayTopUpResponse mockResponse = new PaymentGatewayTopUpResponse();
+        mockResponse.setPaymentToken("snap-token");
+        mockResponse.setPaymentRedirectUrl("https://pay.example/snap");
+
+        when(walletService.requestTopUpPayment(request)).thenReturn(mockResponse);
+
+        PaymentGatewayTopUpResponse response = walletController.requestTopUpPayment(user, request);
+
+        assertEquals("snap-token", response.getPaymentToken());
+        assertEquals(userId, request.getUserId());
+        verify(walletService).requestTopUpPayment(request);
+    }
+
+    @Test
     void testVerifyTransactionRequiresAdmin() {
         VerifyTransactionRequest request = new VerifyTransactionRequest();
         request.setSuccess(true);
@@ -187,6 +209,18 @@ class WalletControllerTest {
         assertEquals(1, result.size());
         assertEquals(userId, result.get(0).getUserId());
         verify(walletService).getTransactionHistory(userId);
+    }
+
+    @Test
+    void testHandleMidtransNotificationDelegatesToPaymentNotificationService() {
+        MidtransNotificationRequest request = new MidtransNotificationRequest();
+        request.setOrderId("WALLET-TOPUP-" + UUID.randomUUID());
+
+        ResponseEntity<Map<String, String>> response = walletController.handleMidtransNotification(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("ok", response.getBody().get("status"));
+        verify(paymentNotificationService).handleMidtransNotification(request);
     }
 
     @Test

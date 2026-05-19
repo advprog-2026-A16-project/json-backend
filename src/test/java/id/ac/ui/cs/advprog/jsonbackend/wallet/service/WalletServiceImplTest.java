@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Transaction;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.TransactionStatus;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.TransactionType;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGateway;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.WalletRepository;
 
@@ -30,6 +31,9 @@ public class WalletServiceImplTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Mock
+    private PaymentGateway paymentGateway;
 
     @InjectMocks
     private WalletServiceImpl walletService;
