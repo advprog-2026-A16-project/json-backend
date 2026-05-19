@@ -2,6 +2,10 @@ package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.*;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.MidtransOrderId;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGateway;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeResponse;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.*;
 
 import org.springframework.stereotype.Service;
@@ -18,11 +22,14 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
+    private final PaymentGateway paymentGateway;
 
     public WalletServiceImpl(WalletRepository walletRepository,
-                             TransactionRepository transactionRepository) {
+                             TransactionRepository transactionRepository,
+                             PaymentGateway paymentGateway) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
+        this.paymentGateway = paymentGateway;
     }
 
     private Wallet getWallet(UUID userId){
@@ -73,6 +80,43 @@ public class WalletServiceImpl implements WalletService {
         transaction.setDescription("Top-up pending verification");
 
         return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
+    public PaymentGatewayTopUpResponse requestTopUpPayment(TopUpRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        getWallet(request.getUserId());
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDescription("Top-up pending Midtrans payment");
+
+        transaction = transactionRepository.save(transaction);
+        if (transaction.getId() == null) {
+            throw new IllegalStateException("Transaction ID was not generated");
+        }
+
+        String gatewayOrderId = MidtransOrderId.forTopUp(transaction.getId());
+        PaymentGatewayChargeResponse chargeResponse = paymentGateway.createCharge(
+                new PaymentGatewayChargeRequest(
+                        gatewayOrderId,
+                        request.getAmount(),
+                        request.getUserId(),
+                        "Wallet Top-up"
+                )
+        );
+
+        transaction.setPaymentProvider("MIDTRANS");
+        transaction.setGatewayOrderId(gatewayOrderId);
+        transaction.setPaymentToken(chargeResponse.token());
+        transaction.setPaymentRedirectUrl(chargeResponse.redirectUrl());
+
+        return PaymentGatewayTopUpResponse.from(transactionRepository.save(transaction));
     }
 
     @Override

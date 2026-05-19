@@ -15,6 +15,8 @@ public interface WalletService {
 
     TransactionResponse requestTopUp(TopUpRequest request);
 
+    PaymentGatewayTopUpResponse requestTopUpPayment(TopUpRequest request);
+
     WalletResponse withdraw(WithdrawRequest request);
 
     TransactionResponse requestWithdrawal(WithdrawRequest request);

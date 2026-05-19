@@ -44,6 +44,18 @@ public class Transaction {
     @Column(name = "destination_account")
     private String destinationAccount;
 
+    @Column(name = "payment_provider")
+    private String paymentProvider;
+
+    @Column(name = "gateway_order_id", unique = true)
+    private String gatewayOrderId;
+
+    @Column(name = "payment_token")
+    private String paymentToken;
+
+    @Column(name = "payment_redirect_url", length = 1024)
+    private String paymentRedirectUrl;
+
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

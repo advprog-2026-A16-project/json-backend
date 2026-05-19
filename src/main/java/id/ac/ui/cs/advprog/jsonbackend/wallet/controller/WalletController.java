@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentNotificationService;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 
 import jakarta.validation.Valid;
@@ -24,9 +25,12 @@ import java.util.UUID;
 public class WalletController {
 
     private final WalletService walletService;
+    private final PaymentNotificationService paymentNotificationService;
 
-    public WalletController(WalletService walletService) {
+    public WalletController(WalletService walletService,
+                            PaymentNotificationService paymentNotificationService) {
         this.walletService = walletService;
+        this.paymentNotificationService = paymentNotificationService;
     }
 
     @PostMapping("/top-up")
@@ -39,6 +43,14 @@ public class WalletController {
     public TransactionResponse requestTopUp(@AuthenticationPrincipal User user, @Valid @RequestBody TopUpRequest request){
         request.setUserId(authenticatedUserId(user));
         return walletService.requestTopUp(request);
+    }
+
+    @PostMapping("/top-up/payment")
+    public PaymentGatewayTopUpResponse requestTopUpPayment(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody TopUpRequest request) {
+        request.setUserId(authenticatedUserId(user));
+        return walletService.requestTopUpPayment(request);
     }
 
     @PostMapping("/withdraw")
@@ -77,6 +89,13 @@ public class WalletController {
     @GetMapping("/transactions")
     public List<TransactionResponse> getTransactionHistory(@AuthenticationPrincipal User user) {
         return walletService.getTransactionHistory(authenticatedUserId(user));
+    }
+
+    @PostMapping("/payments/midtrans/notifications")
+    public ResponseEntity<Map<String, String>> handleMidtransNotification(
+            @RequestBody MidtransNotificationRequest request) {
+        paymentNotificationService.handleMidtransNotification(request);
+        return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
     private UUID authenticatedUserId(User user) {

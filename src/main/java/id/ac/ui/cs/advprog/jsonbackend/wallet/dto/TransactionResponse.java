@@ -21,6 +21,10 @@ public class TransactionResponse {
     private UUID referenceId;
     private String description;
     private String destinationAccount;
+    private String paymentProvider;
+    private String gatewayOrderId;
+    private String paymentToken;
+    private String paymentRedirectUrl;
     private LocalDateTime createdAt;
 
     public static TransactionResponse from(Transaction transaction) {
@@ -33,6 +37,10 @@ public class TransactionResponse {
         response.setReferenceId(transaction.getReferenceId());
         response.setDescription(transaction.getDescription());
         response.setDestinationAccount(transaction.getDestinationAccount());
+        response.setPaymentProvider(transaction.getPaymentProvider());
+        response.setGatewayOrderId(transaction.getGatewayOrderId());
+        response.setPaymentToken(transaction.getPaymentToken());
+        response.setPaymentRedirectUrl(transaction.getPaymentRedirectUrl());
         response.setCreatedAt(transaction.getCreatedAt());
         return response;
     }
