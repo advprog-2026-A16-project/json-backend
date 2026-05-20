@@ -9,16 +9,65 @@ import lombok.*;
 @Getter
 @Setter
 @Entity
-@Table(name = "transactions")
+@Table(
+        name = "transactions",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_wallet_transaction_reference",
+                columnNames = {"user_id", "type", "reference_id"}
+        )
+)
 public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
+
+    @Column(nullable = false)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TransactionType type;
+
+    @Column(name = "reference_id")
+    private UUID referenceId;
+
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status = TransactionStatus.SUCCESS;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "destination_account")
+    private String destinationAccount;
+
+    @Column(name = "payment_provider")
+    private String paymentProvider;
+
+    @Column(name = "gateway_order_id", unique = true)
+    private String gatewayOrderId;
+
+    @Column(name = "payment_token")
+    private String paymentToken;
+
+    @Column(name = "payment_redirect_url", length = 1024)
+    private String paymentRedirectUrl;
+
+    @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime verifiedAt;
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = TransactionStatus.SUCCESS;
+        }
+    }
 }

@@ -2,98 +2,279 @@ package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.*;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.MidtransOrderId;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGateway;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeResponse;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.*;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 @Service
 public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
+    private final PaymentGateway paymentGateway;
 
     public WalletServiceImpl(WalletRepository walletRepository,
-                             TransactionRepository transactionRepository) {
+                             TransactionRepository transactionRepository,
+                             PaymentGateway paymentGateway) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
+        this.paymentGateway = paymentGateway;
     }
 
-    private Wallet getWallet(java.util.UUID userId){
-        return walletRepository.findByUserId(userId)
+    private Wallet getWallet(UUID userId){
+        validateUserId(userId);
+        return walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(WalletNotFoundException::new);
     }
 
     @Override
     @Transactional
+    public WalletResponse createWalletIfAbsent(UUID userId) {
+        validateUserId(userId);
+        return walletRepository.findByUserId(userId)
+                .map(wallet -> new WalletResponse(wallet.getUserId(), wallet.getBalance()))
+                .orElseGet(() -> {
+                    Wallet wallet = new Wallet();
+                    wallet.setUserId(userId);
+                    Wallet savedWallet = walletRepository.save(wallet);
+                    return new WalletResponse(savedWallet.getUserId(), savedWallet.getBalance());
+                });
+    }
+
+    @Override
+    @Transactional
     public WalletResponse topUp(TopUpRequest request){
-
-        Wallet wallet = getWallet(request.getUserId());
-
-        wallet.credit(request.getAmount());
-        walletRepository.save(wallet);
-
-        Transaction trx = new Transaction();
-        trx.setUserId(request.getUserId());
-        trx.setAmount(request.getAmount());
-        trx.setType(TransactionType.TOP_UP);
-
-        transactionRepository.save(trx);
-
-        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+        return applyTransaction(request.getUserId(), request.getAmount(), TransactionType.TOP_UP, null);
     }
 
     @Override
     @Transactional
     public WalletResponse withdraw(WithdrawRequest request){
+        validateDestinationAccount(request.getDestinationAccount());
+        return applyTransaction(request.getUserId(), request.getAmount(), TransactionType.WITHDRAWAL, null);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse requestTopUp(TopUpRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        getWallet(request.getUserId());
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDescription("Top-up pending verification");
+
+        return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
+    public PaymentGatewayTopUpResponse requestTopUpPayment(TopUpRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        getWallet(request.getUserId());
+
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.TOP_UP);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDescription("Top-up pending Midtrans payment");
+
+        transaction = transactionRepository.save(transaction);
+        if (transaction.getId() == null) {
+            throw new IllegalStateException("Transaction ID was not generated");
+        }
+
+        String gatewayOrderId = MidtransOrderId.forTopUp(transaction.getId());
+        PaymentGatewayChargeResponse chargeResponse = paymentGateway.createCharge(
+                new PaymentGatewayChargeRequest(
+                        gatewayOrderId,
+                        request.getAmount(),
+                        request.getUserId(),
+                        "Wallet Top-up"
+                )
+        );
+
+        transaction.setPaymentProvider("MIDTRANS");
+        transaction.setGatewayOrderId(gatewayOrderId);
+        transaction.setPaymentToken(chargeResponse.token());
+        transaction.setPaymentRedirectUrl(chargeResponse.redirectUrl());
+
+        return PaymentGatewayTopUpResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse requestWithdrawal(WithdrawRequest request) {
+        validateUserId(request.getUserId());
+        validateAmount(request.getAmount());
+        validateDestinationAccount(request.getDestinationAccount());
 
         Wallet wallet = getWallet(request.getUserId());
+        if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientBalanceException();
+        }
 
-        wallet.debit(request.getAmount());
-        walletRepository.save(wallet);
+        Transaction transaction = new Transaction();
+        transaction.setUserId(request.getUserId());
+        transaction.setAmount(request.getAmount());
+        transaction.setType(TransactionType.WITHDRAWAL);
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDestinationAccount(request.getDestinationAccount().trim());
+        transaction.setDescription("Withdrawal pending verification");
 
-        Transaction trx = new Transaction();
-        trx.setUserId(request.getUserId());
-        trx.setAmount(request.getAmount());
-        trx.setType(TransactionType.WITHDRAWAL);
-
-        transactionRepository.save(trx);
-
-        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+        return TransactionResponse.from(transactionRepository.save(transaction));
     }
 
     @Override
     @Transactional
     public WalletResponse payment(PaymentRequest request) {
-        Wallet wallet = getWallet(request.getUserId());
+        return applyTransaction(request.getUserId(), request.getAmount(), TransactionType.PAYMENT, null);
+    }
 
-        wallet.debit(request.getAmount());
-        walletRepository.save(wallet);
-
-        Transaction trx = new Transaction();
-        trx.setUserId(request.getUserId());
-        trx.setAmount(request.getAmount());
-        trx.setType(TransactionType.PAYMENT);
-        transactionRepository.save(trx);
-
-        return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    @Override
+    @Transactional(noRollbackFor = {InsufficientBalanceException.class, WalletNotFoundException.class})
+    public WalletResponse paymentForOrder(UUID userId, BigDecimal amount, UUID orderId) {
+        return applyTransaction(userId, amount, TransactionType.PAYMENT, orderId);
     }
 
     @Override
     @Transactional
     public WalletResponse refund(RefundRequest request) {
-        Wallet wallet = getWallet(request.getUserId());
+        return applyTransaction(request.getUserId(), request.getAmount(), TransactionType.REFUND, null);
+    }
 
-        wallet.credit(request.getAmount());
+    @Override
+    @Transactional
+    public WalletResponse refundForOrder(UUID userId, BigDecimal amount, UUID orderId) {
+        return applyTransaction(userId, amount, TransactionType.REFUND, orderId);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse verifyTransaction(UUID transactionId, VerifyTransactionRequest request) {
+        if (transactionId == null) {
+            throw new IllegalArgumentException("Transaction ID is required");
+        }
+        if (request == null || request.getSuccess() == null) {
+            throw new IllegalArgumentException("Verification result is required");
+        }
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+        if (transaction.getStatus() != TransactionStatus.PENDING) {
+            return TransactionResponse.from(transaction);
+        }
+
+        if (Boolean.TRUE.equals(request.getSuccess())) {
+            Wallet wallet = getWallet(transaction.getUserId());
+            applyVerifiedMutation(wallet, transaction);
+            walletRepository.save(wallet);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+        } else {
+            transaction.setStatus(TransactionStatus.FAILED);
+        }
+
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            transaction.setDescription(request.getDescription().trim());
+        }
+        transaction.setVerifiedAt(LocalDateTime.now());
+
+        return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getTransactionHistory(UUID userId) {
+        validateUserId(userId);
+        return transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(TransactionResponse::from)
+                .toList();
+    }
+
+    private WalletResponse applyTransaction(UUID userId, BigDecimal amount, TransactionType type, UUID referenceId) {
+        validateUserId(userId);
+        validateAmount(amount);
+
+        if (referenceId != null) {
+            var existingTransaction = transactionRepository.findByUserIdAndTypeAndReferenceId(userId, type, referenceId);
+            if (existingTransaction.isPresent()) {
+                Wallet wallet = getWallet(userId);
+                return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+            }
+        }
+
+        Wallet wallet = getWallet(userId);
+
+        if (type == TransactionType.TOP_UP || type == TransactionType.REFUND) {
+            wallet.credit(amount);
+        } else {
+            wallet.debit(amount);
+        }
         walletRepository.save(wallet);
 
         Transaction trx = new Transaction();
-        trx.setUserId(request.getUserId());
-        trx.setAmount(request.getAmount());
-        trx.setType(TransactionType.REFUND);
+        trx.setUserId(userId);
+        trx.setAmount(amount);
+        trx.setType(type);
+        trx.setReferenceId(referenceId);
+        trx.setStatus(TransactionStatus.SUCCESS);
+        trx.setDescription(defaultDescription(type));
         transactionRepository.save(trx);
 
         return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    }
+
+    private void applyVerifiedMutation(Wallet wallet, Transaction transaction) {
+        if (transaction.getType() == TransactionType.TOP_UP || transaction.getType() == TransactionType.REFUND) {
+            wallet.credit(transaction.getAmount());
+        } else {
+            wallet.debit(transaction.getAmount());
+        }
+    }
+
+    private String defaultDescription(TransactionType type) {
+        return switch (type) {
+            case TOP_UP -> "Top-up balance";
+            case WITHDRAWAL -> "Withdrawal balance";
+            case PAYMENT -> "Payment for order";
+            case REFUND -> "Refund balance";
+        };
+    }
+
+    private void validateUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+    }
+
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+    }
+
+    private void validateDestinationAccount(String destinationAccount) {
+        if (destinationAccount == null || destinationAccount.isBlank()) {
+            throw new IllegalArgumentException("Destination account is required");
+        }
     }
 }
