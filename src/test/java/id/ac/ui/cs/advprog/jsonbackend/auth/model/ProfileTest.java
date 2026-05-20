@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.model;
 
+import jakarta.persistence.Column;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -36,5 +38,15 @@ public class ProfileTest {
         profile.onUpdate();
 
         assertThat(profile.getUpdatedAt()).isAfterOrEqualTo(beforeUpdate);
+    }
+
+    @Test
+    void successfulTransactions_ShouldMapToCanonicalDatabaseColumn() throws NoSuchFieldException {
+        Field field = Profile.class.getDeclaredField("successfulTransactions");
+        Column column = field.getAnnotation(Column.class);
+
+        assertNotNull(column);
+        assertEquals("successful_transactions", column.name());
+        assertFalse(column.nullable());
     }
 }
