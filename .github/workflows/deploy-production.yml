@@ -21,8 +21,9 @@ jobs:
 
       - name: Set Docker image tag
         run: |
-          echo "IMAGE_TAG=main-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
-          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:main-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+          SHORT_SHA="$(printf '%s' '${{ github.event.workflow_run.head_sha }}' | cut -c1-7)"
+          echo "IMAGE_TAG=main-${SHORT_SHA}" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:main-${SHORT_SHA}" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -47,6 +48,7 @@ jobs:
           PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
           PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
           PROD_JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          PROD_APP_ENV: production
           PROD_DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
           PROD_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           PROD_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -54,10 +56,9 @@ jobs:
           host: ${{ secrets.PROD_EC2_HOST }}
           username: ${{ secrets.PROD_EC2_USER }}
           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-          script_stop: true
-          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
+          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
           script: |
-            set -euo pipefail
+            set -eu
 
             APP_DIR="/home/ec2-user/apps/json-backend"
 
@@ -70,24 +71,37 @@ jobs:
             git fetch origin
             git checkout main
             git reset --hard origin/main
+            chmod +x deploy/scripts/*.sh
 
             if sudo systemctl list-unit-files | grep -q '^json-backend.service'; then
               sudo systemctl stop json-backend || true
               sudo systemctl disable json-backend || true
             fi
 
-            mkdir -p deploy
-            cat > deploy/.env.prod <<ENVEOF
-            APP_ENV=production
-            POSTGRES_DB=${PROD_DB_NAME}
-            POSTGRES_USER=${PROD_DB_USER}
-            POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
-            JWT_SECRET_KEY=${PROD_JWT_SECRET_KEY}
-            DOCKER_IMAGE=${PROD_DOCKER_IMAGE}
-            ENVEOF
+            if ! docker compose version >/dev/null 2>&1; then
+              mkdir -p ~/.docker/cli-plugins
+              ARCH="$(uname -m)"
+              if [ "$ARCH" = "x86_64" ]; then
+                COMPOSE_ARCH="x86_64"
+              elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                COMPOSE_ARCH="aarch64"
+              else
+                echo "Unsupported architecture: $ARCH"
+                exit 1
+              fi
+              curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-${COMPOSE_ARCH}" -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+            fi
 
-            sudo docker compose version
-            echo "${PROD_DOCKERHUB_TOKEN}" | sudo docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
-            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod pull backend
-            sudo docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d
-            sudo docker image prune -f
+            docker compose version
+            echo "${PROD_DOCKERHUB_TOKEN}" | docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo systemctl disable nginx 2>/dev/null || true
+            export APP_DIR
+            export APP_ENV="${PROD_APP_ENV}"
+            export POSTGRES_DB="${PROD_DB_NAME}"
+            export POSTGRES_USER="${PROD_DB_USER}"
+            export POSTGRES_PASSWORD="${PROD_DB_PASSWORD}"
+            export JWT_SECRET_KEY="${PROD_JWT_SECRET_KEY}"
+            "$APP_DIR/deploy/scripts/deploy-prod.sh" "${PROD_DOCKER_IMAGE}"
+            docker image prune -f

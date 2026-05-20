@@ -13,6 +13,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.PasswordMismatchException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,6 +54,9 @@ class AuthServiceImplTest {
 
     @Mock
     private AuthOutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ApplicationMetrics applicationMetrics;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -93,6 +98,7 @@ class AuthServiceImplTest {
         verify(userRepository).save(any(User.class));
         verify(profileService).createProfileForUser(any(User.class), anyString());
         verify(outboxEventRepository).save(any(AuthOutboxEvent.class));
+        verify(applicationMetrics).recordRegisterSuccess(any(Duration.class));
     }
 
     @Test
@@ -157,6 +163,7 @@ class AuthServiceImplTest {
         assertNotNull(response);
         assertEquals("jwt-token", response.token());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(applicationMetrics).recordLoginSuccess(any(Duration.class));
     }
 
     @Test
@@ -174,5 +181,6 @@ class AuthServiceImplTest {
         assertThrows(AccountBannedException.class, () -> authService.login(request));
 
         verify(jwtService, never()).generateToken(any(User.class));
+        verify(applicationMetrics).recordLoginFailure(any(Duration.class));
     }
 }

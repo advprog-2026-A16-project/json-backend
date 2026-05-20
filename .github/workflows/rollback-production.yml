@@ -1,0 +1,93 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - production
+      docker_image_tag:
+        description: Docker image tag to deploy, for example main-abc1234
+        required: true
+        type: string
+      confirmation:
+        description: Type ROLLBACK to continue
+        required: true
+        type: string
+
+jobs:
+  rollback-production:
+    name: Roll back production image
+    if: >-
+      github.event.inputs.target_environment == 'production' &&
+      github.event.inputs.confirmation == 'ROLLBACK'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set rollback image
+        run: |
+          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:${{ github.event.inputs.docker_image_tag }}" >> $GITHUB_ENV
+
+      - name: Deploy rollback over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          PROD_APP_ENV: production
+          PROD_DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
+          PROD_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          PROD_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
+          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
+          script: |
+            set -eu
+
+            APP_DIR="/home/ec2-user/apps/json-backend"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "Application directory is missing: $APP_DIR"
+              exit 1
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
+            chmod +x deploy/scripts/*.sh
+
+            if ! docker compose version >/dev/null 2>&1; then
+              mkdir -p ~/.docker/cli-plugins
+              ARCH="$(uname -m)"
+              if [ "$ARCH" = "x86_64" ]; then
+                COMPOSE_ARCH="x86_64"
+              elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                COMPOSE_ARCH="aarch64"
+              else
+                echo "Unsupported architecture: $ARCH"
+                exit 1
+              fi
+              curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-${COMPOSE_ARCH}" -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+            fi
+
+            echo "${PROD_DOCKERHUB_TOKEN}" | docker login -u "${PROD_DOCKERHUB_USERNAME}" --password-stdin
+
+            export APP_DIR
+            export APP_ENV="${PROD_APP_ENV}"
+            export POSTGRES_DB="${PROD_DB_NAME}"
+            export POSTGRES_USER="${PROD_DB_USER}"
+            export POSTGRES_PASSWORD="${PROD_DB_PASSWORD}"
+            export JWT_SECRET_KEY="${PROD_JWT_SECRET_KEY}"
+            "$APP_DIR/deploy/scripts/rollback.sh" "${PROD_DOCKER_IMAGE}"
+            docker image prune -f

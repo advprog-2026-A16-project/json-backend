@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +24,9 @@ public class ProfileServiceImplTest {
     @Mock
     private ProfileRepository profileRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private ProfileServiceImpl profileService;
 
@@ -35,6 +39,8 @@ public class ProfileServiceImplTest {
         Profile result = profileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
+        assertEquals(0, result.getSuccessfulTransactions());
+        assertEquals(0.0, result.getRating());
     }
 
     @Test
@@ -42,7 +48,7 @@ public class ProfileServiceImplTest {
         UUID userId = UUID.randomUUID();
         Profile existing = Profile.builder().username("old").build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+        when(profileRepository.findByUserIdWithUser(userId)).thenReturn(Optional.of(existing));
         when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Profile updated = profileService.updateProfile(
@@ -65,6 +71,8 @@ public class ProfileServiceImplTest {
         Profile result = profileService.createProfileForUser(user, "custom_username");
 
         assertEquals("custom_username", result.getUsername());
+        assertEquals(0, result.getSuccessfulTransactions());
+        assertEquals(0.0, result.getRating());
     }
 
     @Test
@@ -75,7 +83,7 @@ public class ProfileServiceImplTest {
                 .username("leon")
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(profile));
 
         Profile result = profileService.getProfileByUserId(userId);
@@ -87,7 +95,7 @@ public class ProfileServiceImplTest {
     void getProfileByUserId_ShouldThrowException_WhenProfileNotFound() {
         UUID userId = UUID.randomUUID();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.empty());
 
         assertThrows(
@@ -106,7 +114,7 @@ public class ProfileServiceImplTest {
                 .bio("Old Bio")
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(existing));
 
         when(profileRepository.save(any(Profile.class)))
@@ -133,7 +141,7 @@ public class ProfileServiceImplTest {
                 .rating(4.0)
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(profile));
 
         when(profileRepository.save(any(Profile.class)))
@@ -154,7 +162,7 @@ public class ProfileServiceImplTest {
                 .rating(4.0)
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(profile));
 
         when(profileRepository.save(any(Profile.class)))
@@ -175,7 +183,7 @@ public class ProfileServiceImplTest {
                 .rating(5.0)
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(profile));
 
         when(profileRepository.save(any(Profile.class)))
@@ -211,7 +219,7 @@ public class ProfileServiceImplTest {
                 .bio("Old Bio")
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(existing));
 
         when(profileRepository.save(any(Profile.class)))
@@ -237,7 +245,7 @@ public class ProfileServiceImplTest {
                 .username("old")
                 .build();
 
-        when(profileRepository.findByUserId(userId))
+        when(profileRepository.findByUserIdWithUser(userId))
                 .thenReturn(Optional.of(existing));
 
         when(profileRepository.save(any(Profile.class)))
@@ -265,7 +273,7 @@ public class ProfileServiceImplTest {
                 .bio("Old Bio")
                 .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existingProfile));
+        when(profileRepository.findByUserIdWithUser(userId)).thenReturn(Optional.of(existingProfile));
         when(profileRepository.save(any(Profile.class))).thenAnswer(i -> i.getArgument(0));
 
         Profile updatedProfile = profileService.updateProfile(userId, "newUsername", "New Name", "New Bio");
@@ -275,14 +283,14 @@ public class ProfileServiceImplTest {
         assertEquals("New Name", updatedProfile.getFullName());
         assertEquals("New Bio", updatedProfile.getBio());
 
-        verify(profileRepository, times(1)).findByUserId(userId);
+        verify(profileRepository, times(1)).findByUserIdWithUser(userId);
         verify(profileRepository, times(1)).save(existingProfile);
     }
 
     @Test
     void updateProfile_ShouldThrowException_WhenProfileNotFound() {
         UUID userId = UUID.randomUUID();
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(profileRepository.findByUserIdWithUser(userId)).thenReturn(Optional.empty());
 
         assertThrows(ProfileNotFoundException.class,
                 () -> profileService.updateProfile(userId, "newUsername", "New Name", "New Bio"));

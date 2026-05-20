@@ -9,12 +9,14 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.repository.KycSubmissionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.KycRequest;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +36,9 @@ public class KycServiceImplTest {
 
     @Mock
     private KycSubmissionRepository kycRepository;
+
+    @Mock
+    private ApplicationMetrics applicationMetrics;
 
     @InjectMocks
     private KycServiceImpl kycService;
@@ -135,6 +140,7 @@ public class KycServiceImplTest {
 
         verify(kycRepository, times(1)).save(submission);
         verify(userRepository, times(1)).save(user);
+        verify(applicationMetrics).recordKycApprove(any(Duration.class));
     }
 
     @Test
@@ -165,5 +171,6 @@ public class KycServiceImplTest {
 
         verify(kycRepository, times(1)).save(submission);
         verify(userRepository, times(1)).save(user);
+        verify(applicationMetrics).recordKycReject(any(Duration.class));
     }
 }

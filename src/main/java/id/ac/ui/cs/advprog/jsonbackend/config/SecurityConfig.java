@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.jsonbackend.config;
 import id.ac.ui.cs.advprog.jsonbackend.auth.security.JwtAuthenticationFilter;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.JwtService;
+import id.ac.ui.cs.advprog.jsonbackend.common.logging.RequestCorrelationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,10 +24,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final RequestCorrelationFilter requestCorrelationFilter;
 
-    public SecurityConfig(UserRepository userRepository, JwtService jwtService) {
+    public SecurityConfig(UserRepository userRepository, JwtService jwtService, RequestCorrelationFilter requestCorrelationFilter) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.requestCorrelationFilter = requestCorrelationFilter;
     }
 
     @Bean
@@ -35,6 +38,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/profile/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
@@ -45,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(requestCorrelationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

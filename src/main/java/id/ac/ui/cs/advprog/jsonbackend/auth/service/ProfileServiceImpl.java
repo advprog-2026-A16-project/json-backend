@@ -3,8 +3,10 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UsernameAlreadyExistsException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.ProfileNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.auth.model.Profile;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
+import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import java.util.UUID;
 public class ProfileServiceImpl implements ProfileService {
 
     private final ProfileRepository profileRepository;
+    private final UserRepository userRepository;
 
     @Override
     public Profile createProfileForUser(User user, String requestedUsername) {
@@ -42,8 +45,24 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public Profile getProfileByUserId(UUID userId) {
-        return profileRepository.findByUserId(userId)
+        return profileRepository.findByUserIdWithUser(userId)
                 .orElseThrow(() -> new ProfileNotFoundException("Profile not found"));
+    }
+
+    @Override
+    @Transactional
+    public Profile getOrCreateProfileByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new UserNotFoundException("Authenticated user not found");
+        }
+
+        return profileRepository.findByUserEmailWithUser(email)
+                .orElseGet(() -> {
+                    User user = userRepository.findByEmail(email)
+                            .orElseThrow(() -> new UserNotFoundException("User not found"));
+                    String generatedUsername = user.getEmail().split("@")[0];
+                    return createProfileForUser(user, generatedUsername);
+                });
     }
 
     @Override
@@ -67,6 +86,13 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         return profileRepository.save(profile);
+    }
+
+    @Override
+    @Transactional
+    public Profile updateProfileByEmail(String email, String username, String fullName, String bio) {
+        Profile profile = getOrCreateProfileByEmail(email);
+        return updateProfile(profile.getUser().getId(), username, fullName, bio);
     }
 
     @Override
