@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.order.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.inventory.dto.ProductResponse;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
@@ -21,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +46,9 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderOutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ApplicationMetrics applicationMetrics;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -99,6 +104,28 @@ class OrderServiceImplTest {
         verify(outboxEventRepository, times(2)).save(any(OrderOutboxEvent.class));
 
         verify(productService, never()).reserveStock(any(), anyInt());
+        verify(applicationMetrics).recordOrderCreateSuccess(any(Duration.class));
+    }
+
+    @Test
+    void testCreateOrderRecordsFailureMetricWhenStockIsInsufficient() {
+        OrderRequest request = new OrderRequest();
+        request.setProductId(productId);
+        request.setQuantity(99);
+        request.setTitipersId(titipersId);
+
+        ProductResponse product = new ProductResponse();
+        product.setId(productId);
+        product.setPrice(new BigDecimal("50000"));
+        product.setStock(1);
+        product.setJastiperId(jastiperId);
+
+        when(productService.findById(productId)).thenReturn(product);
+
+        assertThrows(InvalidOrderException.class, () -> orderService.create(request));
+
+        verify(applicationMetrics).recordOrderCreateFailure(any(Duration.class));
+        verifyNoInteractions(outboxEventRepository);
     }
 
     @Test

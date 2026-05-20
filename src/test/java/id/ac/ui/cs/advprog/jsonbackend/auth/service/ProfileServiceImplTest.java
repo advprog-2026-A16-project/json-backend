@@ -39,6 +39,8 @@ public class ProfileServiceImplTest {
         Profile result = profileService.createProfileForUser(user, null);
 
         assertEquals("leon", result.getUsername());
+        assertEquals(0, result.getSuccessfulTransactions());
+        assertEquals(0.0, result.getRating());
     }
 
     @Test
@@ -69,6 +71,8 @@ public class ProfileServiceImplTest {
         Profile result = profileService.createProfileForUser(user, "custom_username");
 
         assertEquals("custom_username", result.getUsername());
+        assertEquals(0, result.getSuccessfulTransactions());
+        assertEquals(0.0, result.getRating());
     }
 
     @Test

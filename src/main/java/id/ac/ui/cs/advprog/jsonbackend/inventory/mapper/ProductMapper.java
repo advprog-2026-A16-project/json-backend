@@ -12,6 +12,7 @@ public class ProductMapper {
         return Product.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .imageUrl(normalizeImageUrl(request.getImageUrl()))
                 .price(request.getPrice())
                 .stock(request.getStock())
                 .originCountry(request.getOriginCountry())
@@ -23,6 +24,7 @@ public class ProductMapper {
     public void updateEntity(Product product, ProductRequest request) {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
+        product.setImageUrl(normalizeImageUrl(request.getImageUrl()));
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
         product.setOriginCountry(request.getOriginCountry());
@@ -35,6 +37,7 @@ public class ProductMapper {
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
+                .imageUrl(product.getImageUrl())
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .originCountry(product.getOriginCountry())
@@ -43,5 +46,13 @@ public class ProductMapper {
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
+    }
+
+    private String normalizeImageUrl(String imageUrl) {
+        if (imageUrl == null) {
+            return null;
+        }
+        String trimmed = imageUrl.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
