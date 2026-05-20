@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Set;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +30,7 @@ import java.util.UUID;
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
+    private static final int MAX_IMAGE_URL_LENGTH = 2048;
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "createdAt", "updatedAt", "name", "price", "stock", "purchaseDate"
     );
@@ -214,6 +217,28 @@ public class ProductServiceImpl implements ProductService {
         }
         if (request.getStock() == null || request.getStock() < 0) {
             throw new InvalidProductException("Stock cannot be negative");
+        }
+        validateImageUrl(request.getImageUrl());
+    }
+
+    private void validateImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        String normalized = imageUrl.trim();
+        if (normalized.length() > MAX_IMAGE_URL_LENGTH) {
+            throw new InvalidProductException("Image URL must be at most 2048 characters");
+        }
+        try {
+            URI uri = new URI(normalized);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null
+                    || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                throw new InvalidProductException("Image URL must be a valid HTTP/HTTPS URL");
+            }
+        } catch (URISyntaxException exception) {
+            throw new InvalidProductException("Image URL must be a valid HTTP/HTTPS URL");
         }
     }
 

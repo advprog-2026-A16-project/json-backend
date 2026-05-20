@@ -12,10 +12,14 @@ import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.KycSubmissionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.ProfileRepository;
 import id.ac.ui.cs.advprog.jsonbackend.auth.repository.UserRepository;
+import id.ac.ui.cs.advprog.jsonbackend.common.monitoring.ApplicationMetrics;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -24,9 +28,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class KycServiceImpl implements KycService {
 
+    private static final Logger log = LoggerFactory.getLogger(KycServiceImpl.class);
+
     private final KycSubmissionRepository kycRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
+    private final ApplicationMetrics applicationMetrics;
 
     @Override
     @Transactional
@@ -50,7 +57,9 @@ public class KycServiceImpl implements KycService {
                 .submittedAt(LocalDateTime.now())
                 .build();
 
-        return kycRepository.save(submission);
+        KycSubmission savedSubmission = kycRepository.save(submission);
+        log.info("Auth event: KYC_SUBMITTED submissionId={} userId={}", savedSubmission.getId(), user.getId());
+        return savedSubmission;
     }
 
     @Override
@@ -62,6 +71,7 @@ public class KycServiceImpl implements KycService {
     @Override
     @Transactional
     public void approveKyc(UUID submissionId) {
+        long startNanos = System.nanoTime();
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
@@ -73,11 +83,14 @@ public class KycServiceImpl implements KycService {
         user.setRole(Role.JASTIPER);
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        log.info("Auth event: KYC_APPROVED submissionId={} userId={}", submissionId, user.getId());
+        applicationMetrics.recordKycApprove(elapsed(startNanos));
     }
 
     @Override
     @Transactional
     public void rejectKyc(UUID submissionId) {
+        long startNanos = System.nanoTime();
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
@@ -88,5 +101,11 @@ public class KycServiceImpl implements KycService {
         User user = submission.getUser();
         user.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(user);
+        log.info("Auth event: KYC_REJECTED submissionId={} userId={}", submissionId, user.getId());
+        applicationMetrics.recordKycReject(elapsed(startNanos));
+    }
+
+    private Duration elapsed(long startNanos) {
+        return Duration.ofNanos(System.nanoTime() - startNanos);
     }
 }

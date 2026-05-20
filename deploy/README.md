@@ -53,7 +53,10 @@ Set di `Settings -> Secrets and variables -> Actions`:
   3. SSH ke EC2
   4. Pull source terbaru branch `main`
   5. Generate `deploy/.env.prod` dari secrets
-  6. `docker login`, `docker compose pull backend`, lalu `docker compose up -d`
+  6. Menulis image aktif ke `deploy/.current-version`
+  7. Menjalankan smoke health check setelah deploy
+
+Rollback manual tersedia lewat workflow `Rollback Production` dengan input tag image Docker Hub.
 
 ## 4. Operasional di server
 
@@ -68,9 +71,44 @@ cd /home/ec2-user/apps/json-backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod ps
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f backend
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f db
+docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod logs -f proxy
+cat deploy/.current-version
 ```
 
-## 5. Local t3.small-like setup for load test/profiling
+Catatan logging:
+
+- Backend logs tetap menggunakan `stdout/stderr`, jadi inspeksi utama tetap lewat `docker compose logs -f backend`
+- Nginx access/error logs tersedia lewat `docker compose logs -f proxy`
+- `X-Request-ID` diteruskan dari nginx ke backend agar request bisa ditelusuri lintas proxy dan aplikasi
+
+Verifikasi deploy/rollback:
+
+```bash
+./deploy/scripts/post-deploy-healthcheck.sh deploy/docker-compose.prod.yml deploy/.env.prod
+```
+
+## 5. Monitoring stack
+
+Monitoring disediakan sebagai stack terpisah agar provisioning tetap reproducible dari repo:
+
+```bash
+cd /home/ec2-user/apps/json-backend/deploy/monitoring
+docker compose -f docker-compose.monitoring.yml --env-file ../.env.prod up -d
+```
+
+Endpoint utama:
+
+- Prometheus: `http://<server>:9090`
+- Grafana: `http://<server>:3001`
+
+Grafana sudah otomatis terhubung ke Prometheus dan memuat dashboard `JSON Backend Overview`.
+
+Catatan:
+
+- Backend metrics di-scrape langsung ke `backend:8080/actuator/prometheus` lewat Docker network internal.
+- Nginx memblokir akses publik ke `/actuator/prometheus`.
+
+## 6. Local t3.small-like setup for load test/profiling
 
 Tujuan: simulasi keterbatasan resource EC2 `t3.small` (2 vCPU, 2 GiB RAM) di environment lokal untuk profiling.
 

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,6 +27,9 @@ public class ProductRequest {
 
     @NotBlank(message = "Product description is required")
     private String description;
+
+    @Size(max = 2048, message = "Image URL must be at most 2048 characters")
+    private String imageUrl;
 
     @NotNull(message = "Product price is required")
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
