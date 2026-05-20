@@ -48,6 +48,8 @@ jobs:
           PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
           PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
           PROD_JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          PROD_MIDTRANS_SERVER_KEY: ${{ secrets.PROD_MIDTRANS_SERVER_KEY }}
+          PROD_MIDTRANS_SNAP_BASE_URL: ${{ secrets.PROD_MIDTRANS_SNAP_BASE_URL }}
           PROD_APP_ENV: production
           PROD_DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
           PROD_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -56,7 +58,7 @@ jobs:
           host: ${{ secrets.PROD_EC2_HOST }}
           username: ${{ secrets.PROD_EC2_USER }}
           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
+          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_MIDTRANS_SERVER_KEY,PROD_MIDTRANS_SNAP_BASE_URL,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
           script: |
             set -eu
 
@@ -103,5 +105,7 @@ jobs:
             export POSTGRES_USER="${PROD_DB_USER}"
             export POSTGRES_PASSWORD="${PROD_DB_PASSWORD}"
             export JWT_SECRET_KEY="${PROD_JWT_SECRET_KEY}"
+            export MIDTRANS_SERVER_KEY="${PROD_MIDTRANS_SERVER_KEY:-}"
+            export MIDTRANS_SNAP_BASE_URL="${PROD_MIDTRANS_SNAP_BASE_URL:-https://app.sandbox.midtrans.com}"
             "$APP_DIR/deploy/scripts/deploy-prod.sh" "${PROD_DOCKER_IMAGE}"
             docker image prune -f
