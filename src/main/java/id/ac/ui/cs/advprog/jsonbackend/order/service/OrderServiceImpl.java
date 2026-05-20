@@ -95,10 +95,7 @@ public class OrderServiceImpl implements OrderService {
             return orderMapper.toResponse(savedOrder);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Order event: CREATE_FAILURE productId={} titipersId={} quantity={} reason={}",
-                    request.getProductId(),
-                    request.getTitipersId(),
-                    request.getQuantity(),
+                    "Order event: CREATE_FAILURE reason={}",
                     exception.getClass().getSimpleName()
             );
             applicationMetrics.recordOrderCreateFailure(elapsed(startNanos));
