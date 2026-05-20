@@ -43,6 +43,8 @@ Set di `Settings -> Secrets and variables -> Actions`:
 - `PROD_DB_USER`
 - `PROD_DB_PASSWORD`
 - `PROD_JWT_SECRET_KEY` (base64 key)
+- `PROD_MIDTRANS_SERVER_KEY` (wajib jika top-up Midtrans dipakai)
+- `PROD_MIDTRANS_SNAP_BASE_URL` (opsional, default sandbox)
 
 ## 3. Cara kerja deploy
 
@@ -53,6 +55,7 @@ Set di `Settings -> Secrets and variables -> Actions`:
   3. SSH ke EC2
   4. Pull source terbaru branch `main`
   5. Generate `deploy/.env.prod` dari secrets
+  6. Inject Midtrans env ke container backend jika secrets tersedia
   6. Menulis image aktif ke `deploy/.current-version`
   7. Menjalankan smoke health check setelah deploy
 
@@ -80,6 +83,7 @@ Catatan logging:
 - Backend logs tetap menggunakan `stdout/stderr`, jadi inspeksi utama tetap lewat `docker compose logs -f backend`
 - Nginx access/error logs tersedia lewat `docker compose logs -f proxy`
 - `X-Request-ID` diteruskan dari nginx ke backend agar request bisa ditelusuri lintas proxy dan aplikasi
+- Jika wallet top-up Midtrans dipakai, backend container harus menerima `MIDTRANS_SERVER_KEY`
 
 Verifikasi deploy/rollback:
 
@@ -108,6 +112,27 @@ Catatan:
 - Backend metrics di-scrape langsung ke `backend:8080/actuator/prometheus` lewat Docker network internal.
 - Nginx memblokir akses publik ke `/actuator/prometheus`.
 
+## 5.1 Schema drift fix for `user_profiles`
+
+Project ini masih memakai `spring.jpa.hibernate.ddl-auto=update`, jadi drift schema antar environment bisa terjadi jika ada rename kolom manual atau anotasi entity berubah.
+
+Canonical column untuk counter transaksi profile adalah:
+
+- `successful_transactions`
+
+Jika ada environment lama yang masih memakai `successful_transaction`, jalankan:
+
+```bash
+cd /home/ec2-user/apps/json-backend
+docker exec -i deploy-db-1 psql -U postgres -d json_db < deploy/sql/20260520_align_user_profiles_successful_transactions.sql
+```
+
+Verifikasi:
+
+```bash
+docker exec deploy-db-1 psql -U postgres -d json_db -c "\\d+ user_profiles"
+```
+
 ## 6. Local t3.small-like setup for load test/profiling
 
 Tujuan: simulasi keterbatasan resource EC2 `t3.small` (2 vCPU, 2 GiB RAM) di environment lokal untuk profiling.
@@ -126,6 +151,8 @@ POSTGRES_DB=json_db
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your-local-db-password>
 JWT_SECRET_KEY=<your-jwt-secret>
+MIDTRANS_SERVER_KEY=<your-midtrans-server-key>
+MIDTRANS_SNAP_BASE_URL=https://app.sandbox.midtrans.com
 DOCKER_IMAGE=json-backend:local-smoke
 ```
 

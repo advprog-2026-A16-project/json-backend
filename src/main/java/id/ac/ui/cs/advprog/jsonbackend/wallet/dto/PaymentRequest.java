@@ -9,7 +9,6 @@ import java.util.UUID;
 @Getter
 @Setter
 public class PaymentRequest {
-    @NotNull(message = "User ID is required")
     private UUID userId;
 
     @NotNull(message = "Amount is required")

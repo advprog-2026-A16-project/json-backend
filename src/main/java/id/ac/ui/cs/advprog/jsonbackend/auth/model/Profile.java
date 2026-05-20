@@ -31,7 +31,7 @@ public class Profile {
     @Column(columnDefinition = "TEXT")
     private String bio;
 
-    @Column(name = "successful_transaction", nullable = false)
+    @Column(name = "successful_transactions", nullable = false)
     @Builder.Default
     private int successfulTransactions = 0;
 
