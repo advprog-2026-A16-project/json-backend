@@ -28,14 +28,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set rollback image
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
         run: |
-          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:${{ github.event.inputs.docker_image_tag }}" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=${DOCKERHUB_USERNAME}/${DOCKERHUB_REPO}:${{ github.event.inputs.docker_image_tag }}" >> $GITHUB_ENV
 
       - name: Deploy rollback over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         env:
           PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
           PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
