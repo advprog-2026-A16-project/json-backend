@@ -292,6 +292,19 @@ class OrderServiceImplTest {
     }
 
     @Test
+    void testCancelByJastiperThrowsWhenOrderAlreadyCancelled() {
+        order.setStatus(OrderStatus.CANCELLED);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        InvalidOrderException exception = assertThrows(InvalidOrderException.class,
+                () -> orderService.cancelByJastiper(orderId));
+
+        assertEquals("Pesanan yang sudah dibatalkan tidak bisa dibatalkan lagi.", exception.getMessage());
+        verify(orderRepository, never()).save(any(Order.class));
+        verifyNoInteractions(outboxEventRepository);
+    }
+
+    @Test
     void testCancelByJastiperThrowsWhenOrderMissing() {
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 

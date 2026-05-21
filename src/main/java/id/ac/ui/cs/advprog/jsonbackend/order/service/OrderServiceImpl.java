@@ -154,6 +154,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse cancelByJastiper(UUID id) {
         Order order = getOrderOrThrow(id);
 
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderException("Pesanan yang sudah dibatalkan tidak bisa dibatalkan lagi.");
+        }
+
         if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED) {
             throw new InvalidOrderException("Tidak bisa membatalkan pesanan yang sudah dikirim atau selesai.");
         }

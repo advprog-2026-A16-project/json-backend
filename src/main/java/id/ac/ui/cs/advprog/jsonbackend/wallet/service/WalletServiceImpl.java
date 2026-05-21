@@ -163,6 +163,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse refundForOrder(UUID userId, BigDecimal amount, UUID orderId) {
+        validateSuccessfulPaymentExists(userId, orderId);
         return applyTransaction(userId, amount, TransactionType.REFUND, orderId);
     }
 
@@ -241,6 +242,24 @@ public class WalletServiceImpl implements WalletService {
         transactionRepository.save(trx);
 
         return new WalletResponse(wallet.getUserId(), wallet.getBalance());
+    }
+
+    private void validateSuccessfulPaymentExists(UUID userId, UUID orderId) {
+        validateUserId(userId);
+        if (orderId == null) {
+            throw new IllegalArgumentException("Order ID is required");
+        }
+
+        boolean paymentExists = transactionRepository.findByUserIdAndTypeAndReferenceIdAndStatus(
+                userId,
+                TransactionType.PAYMENT,
+                orderId,
+                TransactionStatus.SUCCESS
+        ).isPresent();
+
+        if (!paymentExists) {
+            throw new IllegalArgumentException("Cannot refund order without successful payment");
+        }
     }
 
     private void applyVerifiedMutation(Wallet wallet, Transaction transaction) {
