@@ -56,6 +56,19 @@ class WalletControllerTest {
     }
 
     @Test
+    void testGetWalletCreatesWalletIfAbsentForAuthenticatedUser() {
+        WalletResponse mockResponse = new WalletResponse(userId, BigDecimal.ZERO);
+
+        when(walletService.createWalletIfAbsent(userId)).thenReturn(mockResponse);
+
+        WalletResponse response = walletController.getWallet(user);
+
+        assertEquals(userId, response.getUserId());
+        assertEquals(BigDecimal.ZERO, response.getBalance());
+        verify(walletService).createWalletIfAbsent(userId);
+    }
+
+    @Test
     void testTopUpSuccess() {
 
         TopUpRequest request = new TopUpRequest();
