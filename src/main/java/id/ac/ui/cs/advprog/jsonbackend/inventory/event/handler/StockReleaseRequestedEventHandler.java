@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.event.StockReleaseRequestedEven
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.model.ProcessedEvent;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.ProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ public class StockReleaseRequestedEventHandler {
         this.processedEventRepository = processedEventRepository;
     }
 
+    @EventListener
     @Transactional
     public void handle(StockReleaseRequestedEvent event) {
         String handlerName = "StockReleaseRequestedEventHandler";

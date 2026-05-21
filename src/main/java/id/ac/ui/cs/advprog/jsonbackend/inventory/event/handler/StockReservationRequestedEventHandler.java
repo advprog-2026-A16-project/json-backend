@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.jsonbackend.inventory.event.repository.ProcessedEvent
 import id.ac.ui.cs.advprog.jsonbackend.inventory.service.ProductService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class StockReservationRequestedEventHandler {
         this.applicationMetrics = applicationMetrics;
     }
 
+    @EventListener
     @Transactional
     public void handle(StockReservationRequestedEvent event) {
         long startNanos = System.nanoTime();

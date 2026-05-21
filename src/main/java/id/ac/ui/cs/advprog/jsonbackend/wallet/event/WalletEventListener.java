@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.event;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.PaymentRequest;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.RefundRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.service.WalletService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,5 +39,13 @@ public class WalletEventListener {
         } catch (Exception e) {
             eventPublisher.publishEvent(new PaymentFailedEvent(event.getOrderId(), "Terjadi kesalahan internal pada sistem pembayaran"));
         }
+    }
+
+    @EventListener
+    public void handleOrderCancelledEvent(OrderCancelledEvent event) {
+        RefundRequest request = new RefundRequest();
+        request.setUserId(event.getUserId());
+        request.setAmount(event.getAmount());
+        walletService.refund(request);
     }
 }
