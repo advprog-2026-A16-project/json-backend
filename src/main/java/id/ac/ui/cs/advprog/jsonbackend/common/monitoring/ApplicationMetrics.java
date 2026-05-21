@@ -15,6 +15,9 @@ public class ApplicationMetrics {
     private final Counter loginSuccessCounter;
     private final Counter loginFailureCounter;
     private final Timer loginTimer;
+    private final Counter changePasswordSuccessCounter;
+    private final Counter changePasswordFailureCounter;
+    private final Timer changePasswordTimer;
     private final Counter orderCreateSuccessCounter;
     private final Counter orderCreateFailureCounter;
     private final Timer orderCreateTimer;
@@ -52,6 +55,22 @@ public class ApplicationMetrics {
                 meterRegistry,
                 "json.auth.login.duration",
                 "Login processing duration"
+        );
+
+        this.changePasswordSuccessCounter = buildCounter(
+                meterRegistry,
+                "json.auth.change_password.success",
+                "Total successful change password attempts"
+        );
+        this.changePasswordFailureCounter = buildCounter(
+                meterRegistry,
+                "json.auth.change_password.failure",
+                "Total failed change password attempts"
+        );
+        this.changePasswordTimer = buildTimer(
+                meterRegistry,
+                "json.auth.change_password.duration",
+                "Change password processing duration"
         );
 
         this.orderCreateSuccessCounter = buildCounter(
@@ -119,6 +138,14 @@ public class ApplicationMetrics {
 
     public void recordLoginFailure(Duration duration) {
         record(loginFailureCounter, loginTimer, duration);
+    }
+
+    public void recordChangePasswordSuccess(Duration duration) {
+        record(changePasswordSuccessCounter, changePasswordTimer, duration);
+    }
+
+    public void recordChangePasswordFailure(Duration duration) {
+        record(changePasswordFailureCounter, changePasswordTimer, duration);
     }
 
     public void recordOrderCreateSuccess(Duration duration) {

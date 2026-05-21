@@ -123,15 +123,25 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void changePassword(String email, ChangePasswordRequest request) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        long startNanos = System.nanoTime();
+        try {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new PasswordMismatchException("Invalid old password");
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+                throw new PasswordMismatchException("Invalid old password");
+            }
+
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            log.info("Auth event: CHANGE_PASSWORD_SUCCESS userId={} email={}", user.getId(), user.getEmail());
+            applicationMetrics.recordChangePasswordSuccess(elapsed(startNanos));
+        } catch (RuntimeException exception) {
+            log.warn("Auth event: CHANGE_PASSWORD_FAILURE email={} reason={}", email, exception.getClass().getSimpleName());
+            applicationMetrics.recordChangePasswordFailure(elapsed(startNanos));
+            throw exception;
         }
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
     }
 
     private void validateRegisterRequest(RegisterRequest request) {

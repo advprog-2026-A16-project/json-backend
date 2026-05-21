@@ -24,12 +24,18 @@ class ApplicationMetricsTest {
         applicationMetrics.recordRegisterSuccess(Duration.ofMillis(10));
         applicationMetrics.recordLoginSuccess(Duration.ofMillis(15));
         applicationMetrics.recordLoginFailure(Duration.ofMillis(20));
+        applicationMetrics.recordChangePasswordSuccess(Duration.ofMillis(10));
+        applicationMetrics.recordChangePasswordFailure(Duration.ofMillis(15));
+
 
         assertEquals(1.0, meterRegistry.get("json.auth.register.success").counter().count());
         assertEquals(1.0, meterRegistry.get("json.auth.login.success").counter().count());
         assertEquals(1.0, meterRegistry.get("json.auth.login.failure").counter().count());
+        assertEquals(1.0, meterRegistry.get("json.auth.change_password.success").counter().count());
+        assertEquals(1.0, meterRegistry.get("json.auth.change_password.failure").counter().count());
         assertEquals(1L, meterRegistry.get("json.auth.register.duration").timer().count());
         assertEquals(2L, meterRegistry.get("json.auth.login.duration").timer().count());
+        assertEquals(2L, meterRegistry.get("json.auth.change_password.duration").timer().count());
     }
 
     @Test
