@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -51,6 +53,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleProductNotFoundException(ProductNotFoundException ex) {
         log.warn("Request failed with missing product: {}", ex.getMessage());
+        return ResponseEntity
+                .status(404)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidOrderException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrderException(InvalidOrderException ex) {
+        log.warn("Request failed with invalid order input: {}", ex.getMessage());
+        return ResponseEntity
+                .status(400)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleOrderNotFoundException(OrderNotFoundException ex) {
+        log.warn("Request failed with missing order: {}", ex.getMessage());
         return ResponseEntity
                 .status(404)
                 .body(Map.of("message", ex.getMessage()));

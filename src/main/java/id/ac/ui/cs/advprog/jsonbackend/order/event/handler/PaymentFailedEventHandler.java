@@ -1,7 +1,11 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventPayloadFactory;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
 import id.ac.ui.cs.advprog.jsonbackend.order.repository.OrderRepository;
@@ -9,17 +13,22 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Component
 public class PaymentFailedEventHandler {
 
     private final OrderRepository orderRepository;
     private final OrderProcessedEventRepository processedEventRepository;
+    private final OrderOutboxEventRepository outboxEventRepository;
     private static final String HANDLER_NAME = "PaymentFailedEventHandler";
 
     public PaymentFailedEventHandler(OrderRepository orderRepository,
-                                     OrderProcessedEventRepository processedEventRepository) {
+                                     OrderProcessedEventRepository processedEventRepository,
+                                     OrderOutboxEventRepository outboxEventRepository) {
         this.orderRepository = orderRepository;
         this.processedEventRepository = processedEventRepository;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     @EventListener
@@ -34,6 +43,7 @@ public class PaymentFailedEventHandler {
         orderRepository.findById(event.getOrderId()).ifPresent(order -> {
             order.setStatus(OrderStatus.CANCELLED);
             orderRepository.save(order);
+            appendStockReleaseEvent(order.getId(), order.getProductId(), order.getQuantity());
         });
 
         // Catat bahwa event ini sudah diproses
@@ -43,5 +53,16 @@ public class PaymentFailedEventHandler {
                 .build();
 
         processedEventRepository.save(processedEvent);
+    }
+
+    private void appendStockReleaseEvent(UUID orderId, UUID productId, int quantity) {
+        String payload = OrderEventPayloadFactory.stockReleaseRequestedPayload(orderId, productId, quantity);
+        OrderOutboxEvent outboxEvent = OrderOutboxEvent.builder()
+                .eventType(OrderEventType.STOCK_RELEASE_REQUESTED)
+                .aggregateId(orderId)
+                .payload(payload)
+                .correlationId(UUID.randomUUID().toString())
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 }

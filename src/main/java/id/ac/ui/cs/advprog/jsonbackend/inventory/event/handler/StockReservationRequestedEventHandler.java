@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -31,7 +32,7 @@ public class StockReservationRequestedEventHandler {
     }
 
     @EventListener
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handle(StockReservationRequestedEvent event) {
         long startNanos = System.nanoTime();
         String handlerName = "StockReservationRequestedEventHandler";

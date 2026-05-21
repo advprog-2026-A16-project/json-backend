@@ -56,11 +56,50 @@ class InProcessOrderEventPublisherTest {
         publisher.publish(event);
 
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
-        verify(applicationEventPublisher).publishEvent(captor.capture());
-        OrderCreatedEvent routedEvent = assertInstanceOf(OrderCreatedEvent.class, captor.getValue());
+        verify(applicationEventPublisher, times(2)).publishEvent(captor.capture());
+        StockReservationRequestedEvent stockEvent =
+                assertInstanceOf(StockReservationRequestedEvent.class, captor.getAllValues().get(0));
+        assertEquals(event.getEventId(), stockEvent.eventId());
+        assertEquals(productId, stockEvent.productId());
+        assertEquals(2, stockEvent.quantity());
+
+        OrderCreatedEvent routedEvent = assertInstanceOf(OrderCreatedEvent.class, captor.getAllValues().get(1));
         assertEquals(orderId, routedEvent.getOrderId());
         assertEquals(titipersId, routedEvent.getUserId());
         assertEquals(new BigDecimal("150000"), routedEvent.getAmount());
+    }
+
+    @Test
+    void publishOrderCreatedShouldEmitFailureEventAndNotRouteToWalletWhenStockReservationFails() {
+        UUID orderId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID titipersId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        OrderOutboxEvent event = outboxEvent(
+                eventId,
+                OrderEventType.ORDER_CREATED,
+                OrderEventPayloadFactory.orderCreatedPayload(orderId, productId, 2, titipersId, new BigDecimal("150000"))
+        );
+
+        doAnswer(invocation -> {
+            Object argument = invocation.getArgument(0);
+            if (argument instanceof StockReservationRequestedEvent) {
+                throw new InsufficientStockException("Insufficient stock");
+            }
+            return null;
+        }).when(applicationEventPublisher).publishEvent(any(Object.class));
+
+        InsufficientStockException exception =
+                assertThrows(InsufficientStockException.class, () -> publisher.publish(event));
+
+        assertEquals("Insufficient stock", exception.getMessage());
+
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(applicationEventPublisher, times(2)).publishEvent(captor.capture());
+        StockReservationFailedEvent failureEvent =
+                assertInstanceOf(StockReservationFailedEvent.class, captor.getAllValues().get(1));
+        assertEquals(eventId, failureEvent.getEventId());
+        assertEquals(orderId, failureEvent.getOrderId());
     }
 
     @Test

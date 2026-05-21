@@ -70,18 +70,13 @@ public class OrderServiceImpl implements OrderService {
 
             Order savedOrder = orderRepository.save(order);
 
-            // Mempublikasikan event untuk Modul Wallet (Pembayaran)
+            // Mempublikasikan event checkout. Publisher akan reserve stock dulu,
+            // lalu memicu pembayaran wallet jika reservasi berhasil.
             String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
                     savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
                     savedOrder.getTitipersId(), savedOrder.getTotalPrice()
             );
             appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
-
-            // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
-            String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
-                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
-            );
-            appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
 
             log.info(
                     "Order event: CREATE_SUCCESS orderId={} productId={} titipersId={} quantity={} totalPrice={}",

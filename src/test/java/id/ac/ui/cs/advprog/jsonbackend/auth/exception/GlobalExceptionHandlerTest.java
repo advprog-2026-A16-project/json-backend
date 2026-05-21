@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +41,19 @@ class GlobalExceptionHandlerTest {
                 handler.handleProductNotFoundException(new ProductNotFoundException("missing"));
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("missing", response.getBody().get("message"));
+    }
+
+    @Test
+    void handlesOrderDomainExceptions() {
+        ResponseEntity<Map<String, String>> invalidResponse =
+                handler.handleInvalidOrderException(new InvalidOrderException("bad order"));
+        assertEquals(HttpStatus.BAD_REQUEST, invalidResponse.getStatusCode());
+        assertEquals("bad order", invalidResponse.getBody().get("message"));
+
+        ResponseEntity<Map<String, String>> missingResponse =
+                handler.handleOrderNotFoundException(new OrderNotFoundException("missing order"));
+        assertEquals(HttpStatus.NOT_FOUND, missingResponse.getStatusCode());
+        assertEquals("missing order", missingResponse.getBody().get("message"));
     }
 
     @Test

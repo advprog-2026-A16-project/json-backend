@@ -34,13 +34,7 @@ public class InProcessOrderEventPublisher implements OrderEventPublisher {
         OrderEventType eventType = event.getEventType();
 
         switch (eventType) {
-            case ORDER_CREATED -> applicationEventPublisher.publishEvent(
-                    new OrderCreatedEvent(
-                            readUuid(payload, "orderId"),
-                            readUuid(payload, "titipersId"),
-                            readBigDecimal(payload, "totalPrice")
-                    )
-            );
+            case ORDER_CREATED -> publishOrderCreated(event, payload);
             case ORDER_CANCELLED -> applicationEventPublisher.publishEvent(
                     new OrderCancelledEvent(
                             readUuid(payload, "orderId"),
@@ -68,8 +62,24 @@ public class InProcessOrderEventPublisher implements OrderEventPublisher {
         }
     }
 
+    private void publishOrderCreated(OrderOutboxEvent event, JsonNode payload) {
+        UUID orderId = readUuid(payload, "orderId");
+        reserveStock(event, payload, orderId);
+        applicationEventPublisher.publishEvent(
+                new OrderCreatedEvent(
+                        orderId,
+                        readUuid(payload, "titipersId"),
+                        readBigDecimal(payload, "totalPrice")
+                )
+        );
+    }
+
     private void publishStockReservationRequested(OrderOutboxEvent event, JsonNode payload) {
         UUID orderId = readUuid(payload, "orderId");
+        reserveStock(event, payload, orderId);
+    }
+
+    private void reserveStock(OrderOutboxEvent event, JsonNode payload, UUID orderId) {
         try {
             applicationEventPublisher.publishEvent(
                     new StockReservationRequestedEvent(

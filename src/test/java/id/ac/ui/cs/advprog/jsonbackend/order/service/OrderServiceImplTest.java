@@ -109,12 +109,11 @@ class OrderServiceImplTest {
         ));
 
         org.mockito.ArgumentCaptor<OrderOutboxEvent> captor = org.mockito.ArgumentCaptor.forClass(OrderOutboxEvent.class);
-        verify(outboxEventRepository, times(2)).save(captor.capture());
+        verify(outboxEventRepository).save(captor.capture());
         List<String> eventTypes = captor.getAllValues().stream()
                 .map(event -> event.getEventType().name())
                 .collect(Collectors.toList());
         assertTrue(eventTypes.contains("ORDER_CREATED"));
-        assertTrue(eventTypes.contains("STOCK_RESERVATION_REQUESTED"));
 
         verify(productService, never()).reserveStock(any(), anyInt());
         verify(applicationMetrics).recordOrderCreateSuccess(any(Duration.class));
