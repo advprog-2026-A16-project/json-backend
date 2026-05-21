@@ -1,9 +1,12 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.WalletNotFoundException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -16,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,15 +31,41 @@ class WalletControllerTest {
     @Mock
     private WalletService walletService;
 
+    @Mock
+    private PaymentNotificationService paymentNotificationService;
+
     @InjectMocks
     private WalletController walletController;
 
     private UUID userId;
+    private User user;
+    private User admin;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         userId = UUID.randomUUID();
+
+        user = new User();
+        user.setId(userId);
+        user.setRole(Role.TITIPERS);
+
+        admin = new User();
+        admin.setId(UUID.randomUUID());
+        admin.setRole(Role.ADMIN);
+    }
+
+    @Test
+    void testGetWalletCreatesWalletIfAbsentForAuthenticatedUser() {
+        WalletResponse mockResponse = new WalletResponse(userId, BigDecimal.ZERO);
+
+        when(walletService.createWalletIfAbsent(userId)).thenReturn(mockResponse);
+
+        WalletResponse response = walletController.getWallet(user);
+
+        assertEquals(userId, response.getUserId());
+        assertEquals(BigDecimal.ZERO, response.getBalance());
+        verify(walletService).createWalletIfAbsent(userId);
     }
 
     @Test
@@ -50,7 +80,7 @@ class WalletControllerTest {
 
         when(walletService.topUp(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.topUp(request);
+        WalletResponse response = walletController.topUp(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("150000"), response.getBalance());
@@ -64,13 +94,14 @@ class WalletControllerTest {
         WithdrawRequest request = new WithdrawRequest();
         request.setUserId(userId);
         request.setAmount(new BigDecimal("20000"));
+        request.setDestinationAccount("BCA 1234567890");
 
         WalletResponse mockResponse =
                 new WalletResponse(userId, new BigDecimal("80000"));
 
         when(walletService.withdraw(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.withdraw(request);
+        WalletResponse response = walletController.withdraw(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("80000"), response.getBalance());
@@ -84,12 +115,13 @@ class WalletControllerTest {
         WithdrawRequest request = new WithdrawRequest();
         request.setUserId(userId);
         request.setAmount(new BigDecimal("200000"));
+        request.setDestinationAccount("BCA 1234567890");
 
         when(walletService.withdraw(request))
                 .thenThrow(new RuntimeException("Saldo tidak cukup"));
 
         assertThrows(RuntimeException.class, () -> {
-            walletController.withdraw(request);
+            walletController.withdraw(user, request);
         });
 
         verify(walletService, times(1)).withdraw(request);
@@ -106,7 +138,7 @@ class WalletControllerTest {
 
         when(walletService.payment(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.payment(request);
+        WalletResponse response = walletController.payment(user, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("50000"), response.getBalance());
@@ -125,12 +157,83 @@ class WalletControllerTest {
 
         when(walletService.refund(request)).thenReturn(mockResponse);
 
-        WalletResponse response = walletController.refund(request);
+        WalletResponse response = walletController.refund(admin, request);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("150000"), response.getBalance());
 
         verify(walletService, times(1)).refund(request);
+    }
+
+    @Test
+    void testRequestTopUpUsesAuthenticatedUser() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("50000"));
+        TransactionResponse mockResponse = new TransactionResponse();
+        mockResponse.setUserId(userId);
+
+        when(walletService.requestTopUp(request)).thenReturn(mockResponse);
+
+        TransactionResponse response = walletController.requestTopUp(user, request);
+
+        assertEquals(userId, response.getUserId());
+        assertEquals(userId, request.getUserId());
+        verify(walletService).requestTopUp(request);
+    }
+
+    @Test
+    void testRequestTopUpPaymentUsesAuthenticatedUser() {
+        TopUpRequest request = new TopUpRequest();
+        request.setUserId(UUID.randomUUID());
+        request.setAmount(new BigDecimal("50000"));
+        PaymentGatewayTopUpResponse mockResponse = new PaymentGatewayTopUpResponse();
+        mockResponse.setPaymentToken("snap-token");
+        mockResponse.setPaymentRedirectUrl("https://pay.example/snap");
+
+        when(walletService.requestTopUpPayment(request)).thenReturn(mockResponse);
+
+        PaymentGatewayTopUpResponse response = walletController.requestTopUpPayment(user, request);
+
+        assertEquals("snap-token", response.getPaymentToken());
+        assertEquals(userId, request.getUserId());
+        verify(walletService).requestTopUpPayment(request);
+    }
+
+    @Test
+    void testVerifyTransactionRequiresAdmin() {
+        VerifyTransactionRequest request = new VerifyTransactionRequest();
+        request.setSuccess(true);
+
+        assertThrows(RuntimeException.class, () -> walletController.verifyTransaction(user, UUID.randomUUID(), request));
+
+        verify(walletService, never()).verifyTransaction(any(), any());
+    }
+
+    @Test
+    void testGetTransactionHistoryUsesAuthenticatedUser() {
+        TransactionResponse response = new TransactionResponse();
+        response.setUserId(userId);
+
+        when(walletService.getTransactionHistory(userId)).thenReturn(List.of(response));
+
+        List<TransactionResponse> result = walletController.getTransactionHistory(user);
+
+        assertEquals(1, result.size());
+        assertEquals(userId, result.get(0).getUserId());
+        verify(walletService).getTransactionHistory(userId);
+    }
+
+    @Test
+    void testHandleMidtransNotificationDelegatesToPaymentNotificationService() {
+        MidtransNotificationRequest request = new MidtransNotificationRequest();
+        request.setOrderId("WALLET-TOPUP-" + UUID.randomUUID());
+
+        ResponseEntity<Map<String, String>> response = walletController.handleMidtransNotification(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("ok", response.getBody().get("status"));
+        verify(paymentNotificationService).handleMidtransNotification(request);
     }
 
     @Test
