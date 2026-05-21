@@ -109,4 +109,20 @@ class AuthControllerTest {
 
         verify(authService).login(loginRequest);
     }
+
+    @Test
+    void testChangePasswordEndpoint() throws Exception {
+        ChangePasswordRequest request = new ChangePasswordRequest("oldPass", "newPass");
+        UserDetails userDetails = new User("testuser", "password", new ArrayList<>());
+
+        doNothing().when(authService).changePassword(eq("testuser"), any(ChangePasswordRequest.class));
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .with(user(userDetails))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(authService).changePassword(eq("testuser"), any(ChangePasswordRequest.class));
+    }
 }
