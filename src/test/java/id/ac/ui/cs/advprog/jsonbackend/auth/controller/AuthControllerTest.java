@@ -1,12 +1,15 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.controller;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.Role;
 import id.ac.ui.cs.advprog.jsonbackend.auth.exception.UserNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.auth.model.User;
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MediaType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,13 +17,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+import static org.springframework.http.RequestEntity.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
@@ -111,18 +118,16 @@ class AuthControllerTest {
     }
 
     @Test
-    void testChangePasswordEndpoint() throws Exception {
+    void testChangePasswordEndpoint() {
         ChangePasswordRequest request = new ChangePasswordRequest("oldPass", "newPass");
-        UserDetails userDetails = new User("testuser", "password", new ArrayList<>());
+        UserDetails userDetails = mock(UserDetails.class);
 
-        doNothing().when(authService).changePassword(eq("testuser"), any(ChangePasswordRequest.class));
+        when(userDetails.getUsername()).thenReturn("test@example.com");
+        doNothing().when(authService).changePassword("test@example.com", request);
 
-        mockMvc.perform(post("/api/auth/change-password")
-                        .with(user(userDetails))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+        ResponseEntity<Void> response = authController.changePassword(userDetails, request);
 
-        verify(authService).changePassword(eq("testuser"), any(ChangePasswordRequest.class));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(authService).changePassword("test@example.com", request);
     }
 }

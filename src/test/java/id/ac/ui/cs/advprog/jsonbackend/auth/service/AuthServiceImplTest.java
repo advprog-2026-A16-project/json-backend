@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
@@ -188,18 +189,15 @@ class AuthServiceImplTest {
     @Test
     void testChangePasswordSuccess() {
         ChangePasswordRequest request = new ChangePasswordRequest("oldPass", "newPass");
-        User user = User.builder()
-                .username("testuser")
-                .password("encodedOldPass")
-                .build();
+        User user = new User("test@example.com", "encodedOldPass", Role.TITIPERS);
 
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("oldPass", "encodedOldPass")).thenReturn(true);
         when(passwordEncoder.encode("newPass")).thenReturn("encodedNewPass");
 
-        authService.changePassword("testuser", request);
+        authService.changePassword("test@example.com", request);
 
-        verify(userRepository).findByUsername("testuser");
+        verify(userRepository).findByEmail("test@example.com");
         verify(passwordEncoder).matches("oldPass", "encodedOldPass");
         verify(passwordEncoder).encode("newPass");
         verify(userRepository).save(user);
@@ -210,19 +208,16 @@ class AuthServiceImplTest {
     @Test
     void testChangePasswordWrongOldPassword() {
         ChangePasswordRequest request = new ChangePasswordRequest("wrongOldPass", "newPass");
-        User user = User.builder()
-                .username("testuser")
-                .password("encodedOldPass")
-                .build();
+        User user = new User("test@example.com", "encodedOldPass", Role.TITIPERS);
 
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrongOldPass", "encodedOldPass")).thenReturn(false);
 
         assertThrows(PasswordMismatchException.class, () ->
-                authService.changePassword("testuser", request)
+                authService.changePassword("test@example.com", request)
         );
 
-        verify(userRepository).findByUsername("testuser");
+        verify(userRepository).findByEmail("test@example.com");
         verify(passwordEncoder).matches("wrongOldPass", "encodedOldPass");
         verify(passwordEncoder, never()).encode(anyString());
         verify(userRepository, never()).save(any(User.class));
@@ -232,13 +227,13 @@ class AuthServiceImplTest {
     void testChangePasswordUserNotFound() {
         ChangePasswordRequest request = new ChangePasswordRequest("oldPass", "newPass");
 
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class, () ->
-                authService.changePassword("unknown", request)
+                authService.changePassword("unknown@example.com", request)
         );
 
-        verify(userRepository).findByUsername("unknown");
+        verify(userRepository).findByEmail("unknown@example.com");
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 }
