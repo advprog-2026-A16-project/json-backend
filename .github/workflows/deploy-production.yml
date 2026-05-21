@@ -17,22 +17,25 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set Docker image tag
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
         run: |
           SHORT_SHA="$(printf '%s' '${{ github.event.workflow_run.head_sha }}' | cut -c1-7)"
           echo "IMAGE_TAG=main-${SHORT_SHA}" >> $GITHUB_ENV
-          echo "DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:main-${SHORT_SHA}" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=${DOCKERHUB_USERNAME}/${DOCKERHUB_REPO}:main-${SHORT_SHA}" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: .
           file: ./Dockerfile
@@ -42,12 +45,14 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:latest
 
       - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         env:
           PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
           PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
           PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
           PROD_JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          PROD_MIDTRANS_SERVER_KEY: ${{ secrets.PROD_MIDTRANS_SERVER_KEY }}
+          PROD_MIDTRANS_SNAP_BASE_URL: ${{ secrets.PROD_MIDTRANS_SNAP_BASE_URL }}
           PROD_APP_ENV: production
           PROD_DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
           PROD_DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -56,7 +61,7 @@ jobs:
           host: ${{ secrets.PROD_EC2_HOST }}
           username: ${{ secrets.PROD_EC2_USER }}
           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
+          envs: PROD_DB_NAME,PROD_DB_USER,PROD_DB_PASSWORD,PROD_JWT_SECRET_KEY,PROD_MIDTRANS_SERVER_KEY,PROD_MIDTRANS_SNAP_BASE_URL,PROD_APP_ENV,PROD_DOCKER_IMAGE,PROD_DOCKERHUB_USERNAME,PROD_DOCKERHUB_TOKEN
           script: |
             set -eu
 
@@ -103,5 +108,7 @@ jobs:
             export POSTGRES_USER="${PROD_DB_USER}"
             export POSTGRES_PASSWORD="${PROD_DB_PASSWORD}"
             export JWT_SECRET_KEY="${PROD_JWT_SECRET_KEY}"
+            export MIDTRANS_SERVER_KEY="${PROD_MIDTRANS_SERVER_KEY:-}"
+            export MIDTRANS_SNAP_BASE_URL="${PROD_MIDTRANS_SNAP_BASE_URL:-https://app.sandbox.midtrans.com}"
             "$APP_DIR/deploy/scripts/deploy-prod.sh" "${PROD_DOCKER_IMAGE}"
             docker image prune -f
