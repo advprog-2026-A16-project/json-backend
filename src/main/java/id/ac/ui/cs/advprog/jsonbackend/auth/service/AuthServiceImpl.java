@@ -122,6 +122,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void changePassword(String email, ChangePasswordRequest request) {
         long startNanos = System.nanoTime();
         try {
