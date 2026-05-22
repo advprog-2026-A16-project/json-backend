@@ -77,12 +77,6 @@ public class OrderServiceImpl implements OrderService {
             );
             appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
 
-            // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
-            String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
-                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
-            );
-            appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
-
             log.info(
                     "Order event: CREATE_SUCCESS orderId={} productId={} titipersId={} quantity={} totalPrice={}",
                     savedOrder.getId(),
@@ -162,6 +156,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse cancelByJastiper(UUID id) {
         Order order = getOrderOrThrow(id);
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderException("Pesanan yang sudah dibatalkan tidak bisa dibatalkan lagi.");
+        }
 
         if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED) {
             throw new InvalidOrderException("Tidak bisa membatalkan pesanan yang sudah dikirim atau selesai.");

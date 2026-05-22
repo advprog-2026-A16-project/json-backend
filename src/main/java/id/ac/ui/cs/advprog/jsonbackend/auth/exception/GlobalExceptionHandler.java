@@ -14,9 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.util.UUID;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -95,6 +97,20 @@ public class GlobalExceptionHandler {
         FieldError firstFieldError = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
         String message = firstFieldError != null ? firstFieldError.getDefaultMessage() : "Validation failed";
         log.warn("Request validation failed: {}", message);
+
+        return ResponseEntity
+                .status(400)
+                .body(Map.of("message", message));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        String message = ex.getRequiredType() == UUID.class
+                ? "Invalid UUID value for parameter: " + ex.getName()
+                : "Invalid value for parameter: " + ex.getName();
+        log.warn("Request type mismatch for parameter {}: {}", ex.getName(), ex.getValue());
 
         return ResponseEntity
                 .status(400)

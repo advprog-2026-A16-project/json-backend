@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.security;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.service.JwtService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,11 +84,13 @@ class JwtAuthenticationFilterTest {
     void doFilterInternalValidJwtSetsAuthentication() throws ServletException, IOException {
         String token = "valid.jwt.token";
         String userEmail = "test@example.com";
+        Claims claims = mock(Claims.class);
 
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
-        when(jwtService.extractUsername(token)).thenReturn(userEmail);
+        when(jwtService.extractAllClaims(token)).thenReturn(claims);
+        when(claims.getSubject()).thenReturn(userEmail);
         when(userDetailsService.loadUserByUsername(userEmail)).thenReturn(userDetails);
-        when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
+        when(jwtService.isTokenValid(claims, userDetails)).thenReturn(true);
         doReturn(Collections.emptyList()).when(userDetails).getAuthorities();
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
@@ -100,11 +103,13 @@ class JwtAuthenticationFilterTest {
     void doFilterInternalInvalidJwtDoesNotSetAuthentication() throws ServletException, IOException {
         String token = "invalid.jwt.token";
         String userEmail = "test@example.com";
+        Claims claims = mock(Claims.class);
 
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
-        when(jwtService.extractUsername(token)).thenReturn(userEmail);
+        when(jwtService.extractAllClaims(token)).thenReturn(claims);
+        when(claims.getSubject()).thenReturn(userEmail);
         when(userDetailsService.loadUserByUsername(userEmail)).thenReturn(userDetails);
-        when(jwtService.isTokenValid(token, userDetails)).thenReturn(false);
+        when(jwtService.isTokenValid(claims, userDetails)).thenReturn(false);
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -115,9 +120,11 @@ class JwtAuthenticationFilterTest {
     @Test
     void doFilterInternalUsernameNullDoesNotSetAuthentication() throws ServletException, IOException {
         String token = "some.jwt.token";
+        Claims claims = mock(Claims.class);
 
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
-        when(jwtService.extractUsername(token)).thenReturn(null);
+        when(jwtService.extractAllClaims(token)).thenReturn(claims);
+        when(claims.getSubject()).thenReturn(null);
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
