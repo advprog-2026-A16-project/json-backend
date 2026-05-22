@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
@@ -113,5 +114,21 @@ class OrderControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(expectedResponse, response.getBody());
         verify(orderService).findByJastiperId(jastiperId);
+    }
+
+    @Test
+    void giveRatingReturnsOkStatusAndResponse() {
+        OrderRatingRequest request = new OrderRatingRequest(5, 4, "Bagus");
+        orderResponse.setStatus(OrderStatus.COMPLETED);
+        orderResponse.setJastiperRating(5);
+        orderResponse.setProductRating(4);
+        orderResponse.setReviewNotes("Bagus");
+        when(orderService.giveRating(orderId, request)).thenReturn(orderResponse);
+
+        ResponseEntity<OrderResponse> response = orderController.giveRating(orderId, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(orderResponse, response.getBody());
+        verify(orderService).giveRating(orderId, request);
     }
 }

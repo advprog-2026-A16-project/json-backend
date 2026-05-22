@@ -191,7 +191,10 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse refundForOrder(UUID userId, BigDecimal amount, UUID orderId) {
         return recordTransaction(
                 TransactionType.REFUND,
-                () -> applyTransaction(userId, amount, TransactionType.REFUND, orderId)
+                () -> {
+                    validateSuccessfulPaymentExists(userId, orderId);
+                    return applyTransaction(userId, amount, TransactionType.REFUND, orderId);
+                }
         );
     }
 
@@ -301,6 +304,24 @@ public class WalletServiceImpl implements WalletService {
 
     private Duration elapsed(long startNanos) {
         return Duration.ofNanos(System.nanoTime() - startNanos);
+    }
+
+    private void validateSuccessfulPaymentExists(UUID userId, UUID orderId) {
+        validateUserId(userId);
+        if (orderId == null) {
+            throw new IllegalArgumentException("Order ID is required");
+        }
+
+        boolean paymentExists = transactionRepository.findByUserIdAndTypeAndReferenceIdAndStatus(
+                userId,
+                TransactionType.PAYMENT,
+                orderId,
+                TransactionStatus.SUCCESS
+        ).isPresent();
+
+        if (!paymentExists) {
+            throw new IllegalArgumentException("Cannot refund order without successful payment");
+        }
     }
 
     private void applyVerifiedMutation(Wallet wallet, Transaction transaction) {

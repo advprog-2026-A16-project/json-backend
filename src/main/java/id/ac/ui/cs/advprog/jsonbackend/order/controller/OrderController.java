@@ -1,9 +1,11 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.controller;
 
+import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRatingRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderResponse;
 import id.ac.ui.cs.advprog.jsonbackend.order.dto.OrderStatusUpdateRequest;
 import id.ac.ui.cs.advprog.jsonbackend.order.service.OrderService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,7 +14,6 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-// Sesuai kesepakatan tadi, kita pakai singular "order"
 @RequestMapping("/api/order")
 public class OrderController {
 
@@ -39,7 +40,7 @@ public class OrderController {
 
     // 3. Create Order (Untuk Checkout)
     @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request) {
+    public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         OrderResponse response = orderService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -48,7 +49,7 @@ public class OrderController {
     @PutMapping("/{id}/status")
     public ResponseEntity<OrderResponse> updateStatus(
             @PathVariable UUID id,
-            @RequestBody OrderStatusUpdateRequest request) {
+            @Valid @RequestBody OrderStatusUpdateRequest request) {
         OrderResponse response = orderService.updateStatus(id, request);
         return ResponseEntity.ok(response);
     }
@@ -65,5 +66,14 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> getOrdersByJastiperId(@PathVariable UUID jastiperId) {
         List<OrderResponse> responses = orderService.findByJastiperId(jastiperId);
         return ResponseEntity.ok(responses);
+    }
+
+    // 7. Give Rating (Untuk Titipers setelah pesanan COMPLETED)
+    @PostMapping("/{id}/rating")
+    public ResponseEntity<OrderResponse> giveRating(
+            @PathVariable UUID id,
+            @Valid @RequestBody OrderRatingRequest request) {
+        OrderResponse response = orderService.giveRating(id, request);
+        return ResponseEntity.ok(response);
     }
 }

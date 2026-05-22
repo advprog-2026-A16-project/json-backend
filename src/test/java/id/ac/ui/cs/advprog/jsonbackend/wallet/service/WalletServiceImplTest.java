@@ -203,6 +203,25 @@ public class WalletServiceImplTest {
     }
 
     @Test
+    void testRefundForOrderRejectsMissingSuccessfulPayment() {
+        UUID orderId = UUID.randomUUID();
+
+        when(transactionRepository.findByUserIdAndTypeAndReferenceIdAndStatus(
+                userId, TransactionType.PAYMENT, orderId, TransactionStatus.SUCCESS
+        ))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> walletService.refundForOrder(userId, new BigDecimal("50000"), orderId)
+        );
+
+        assertEquals("Cannot refund order without successful payment", exception.getMessage());
+        verify(walletRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
     void requestTopUpShouldCreatePendingTransactionWithoutChangingBalance() {
         TopUpRequest request = new TopUpRequest();
         request.setUserId(userId);

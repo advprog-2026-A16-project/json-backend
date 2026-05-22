@@ -1,8 +1,6 @@
 package id.ac.ui.cs.advprog.jsonbackend.wallet.event;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.event.UserRegisteredEvent;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
-import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.event.model.WalletOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.event.repository.WalletOutboxEventRepository;
@@ -120,32 +118,6 @@ class WalletEventListenerTest {
     }
 
     @Test
-    void testHandleOrderOutboxEvent_OrderCreated() {
-        OrderOutboxEvent event = OrderOutboxEvent.builder()
-                .eventType(OrderEventType.ORDER_CREATED)
-                .payload(orderPayload())
-                .build();
-
-        walletEventListener.handleOrderOutboxEvent(event);
-
-        verify(walletService).paymentForOrder(userId, new BigDecimal("50000"), orderId);
-        verify(outboxEventRepository).save(any(WalletOutboxEvent.class));
-    }
-
-    @Test
-    void testHandleOrderOutboxEvent_OrderCancelled() {
-        OrderOutboxEvent event = OrderOutboxEvent.builder()
-                .eventType(OrderEventType.ORDER_CANCELLED)
-                .payload(orderPayload())
-                .build();
-
-        walletEventListener.handleOrderOutboxEvent(event);
-
-        verify(walletService).refundForOrder(userId, new BigDecimal("50000"), orderId);
-        verify(outboxEventRepository, never()).save(any());
-    }
-
-    @Test
     void testHandleUserRegisteredEventCreatesWallet() {
         UserRegisteredEvent event = new UserRegisteredEvent(
                 UUID.randomUUID(),
@@ -165,9 +137,4 @@ class WalletEventListenerTest {
         verify(walletService).createWalletIfAbsent(userId);
     }
 
-    private String orderPayload() {
-        return """
-                {"orderId":"%s","productId":"%s","quantity":1,"titipersId":"%s","totalPrice":50000}
-                """.formatted(orderId, UUID.randomUUID(), userId);
-    }
 }

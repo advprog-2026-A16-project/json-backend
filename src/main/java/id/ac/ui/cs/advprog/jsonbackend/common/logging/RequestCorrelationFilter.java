@@ -45,8 +45,8 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
                 log.error(pattern, request.getMethod(), request.getRequestURI(), status, durationMs);
             } else if (status >= 400) {
                 log.warn(pattern, request.getMethod(), request.getRequestURI(), status, durationMs);
-            } else {
-                log.info(pattern, request.getMethod(), request.getRequestURI(), status, durationMs);
+            } else if (log.isDebugEnabled()) {
+                log.debug(pattern, request.getMethod(), request.getRequestURI(), status, durationMs);
             }
             MDC.remove(REQUEST_ID_MDC_KEY);
         }

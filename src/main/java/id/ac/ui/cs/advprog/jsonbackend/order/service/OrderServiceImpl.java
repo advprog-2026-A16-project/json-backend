@@ -77,12 +77,6 @@ public class OrderServiceImpl implements OrderService {
             );
             appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
 
-            // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
-            String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
-                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
-            );
-            appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
-
             log.info(
                     "Order event: CREATE_SUCCESS orderId={} productId={} titipersId={} quantity={} totalPrice={}",
                     savedOrder.getId(),
@@ -92,12 +86,13 @@ public class OrderServiceImpl implements OrderService {
                     savedOrder.getTotalPrice()
             );
             applicationMetrics.recordOrderCreateSuccess(elapsed(startNanos));
+
             return orderMapper.toResponse(savedOrder);
         } catch (RuntimeException exception) {
             log.warn(
                     "Order event: CREATE_FAILURE productId={} titipersId={} quantity={} reason={}",
-                    request.getProductId(),
-                    request.getTitipersId(),
+                    sanitizeLog(request.getProductId()),
+                    sanitizeLog(request.getTitipersId()),
                     request.getQuantity(),
                     exception.getClass().getSimpleName()
             );
@@ -161,6 +156,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse cancelByJastiper(UUID id) {
         Order order = getOrderOrThrow(id);
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderException("Pesanan yang sudah dibatalkan tidak bisa dibatalkan lagi.");
+        }
 
         if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED) {
             throw new InvalidOrderException("Tidak bisa membatalkan pesanan yang sudah dikirim atau selesai.");
@@ -229,5 +228,12 @@ public class OrderServiceImpl implements OrderService {
 
     private Duration elapsed(long startNanos) {
         return Duration.ofNanos(System.nanoTime() - startNanos);
+    }
+
+    private String sanitizeLog(Object input) {
+        if (input == null) {
+            return "null";
+        }
+        return input.toString().replaceAll("[\n\r\t]", "_");
     }
 }

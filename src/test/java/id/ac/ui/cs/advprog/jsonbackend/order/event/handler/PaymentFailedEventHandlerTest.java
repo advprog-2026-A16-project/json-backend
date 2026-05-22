@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.jsonbackend.order.event.handler;
 
 import id.ac.ui.cs.advprog.jsonbackend.order.event.PaymentFailedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.OrderEventType;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderOutboxEvent;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.model.OrderProcessedEvent;
+import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderOutboxEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.event.repository.OrderProcessedEventRepository;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.Order;
 import id.ac.ui.cs.advprog.jsonbackend.order.model.OrderStatus;
@@ -29,6 +32,9 @@ class PaymentFailedEventHandlerTest {
     @Mock
     private OrderProcessedEventRepository processedEventRepository;
 
+    @Mock
+    private OrderOutboxEventRepository outboxEventRepository;
+
     @InjectMocks
     private PaymentFailedEventHandler handler;
 
@@ -43,6 +49,8 @@ class PaymentFailedEventHandlerTest {
 
         order = new Order();
         order.setId(orderId);
+        order.setProductId(UUID.randomUUID());
+        order.setQuantity(2);
         order.setStatus(OrderStatus.PAID);
     }
 
@@ -58,6 +66,12 @@ class PaymentFailedEventHandlerTest {
         assertEquals(OrderStatus.CANCELLED, order.getStatus());
         verify(orderRepository).save(order);
         verify(processedEventRepository).save(any(OrderProcessedEvent.class));
+        verify(outboxEventRepository).save(argThat(outboxEvent ->
+                outboxEvent.getEventType() == OrderEventType.STOCK_RELEASE_REQUESTED
+                        && outboxEvent.getAggregateId().equals(order.getId())
+                        && outboxEvent.getPayload().contains(order.getProductId().toString())
+                        && outboxEvent.getPayload().contains("\"quantity\":2")
+        ));
     }
 
     @Test
@@ -69,5 +83,6 @@ class PaymentFailedEventHandlerTest {
 
         verify(orderRepository, never()).save(any());
         verify(processedEventRepository, never()).save(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 }

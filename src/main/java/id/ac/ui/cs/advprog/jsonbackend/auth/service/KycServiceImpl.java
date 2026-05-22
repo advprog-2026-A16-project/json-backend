@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -41,9 +42,20 @@ public class KycServiceImpl implements KycService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
+        if (user.getRole() != Role.TITIPERS) {
+            throw new IllegalStateException("Only titipers accounts can submit KYC");
+        }
         if (user.getAccountStatus() == AccountStatus.PENDING_VERIFICATION) {
             throw new IllegalStateException("KYC application is being processed");
         }
+        kycRepository.findTopByUserIdOrderBySubmittedAtDesc(userId).ifPresent(latestSubmission -> {
+            if (latestSubmission.getStatus() == KycStatus.REQUESTED) {
+                throw new IllegalStateException("KYC application is being processed");
+            }
+            if (latestSubmission.getStatus() == KycStatus.APPROVED) {
+                throw new IllegalStateException("KYC has already been approved");
+            }
+        });
 
         user.setAccountStatus(AccountStatus.PENDING_VERIFICATION);
         userRepository.save(user);
@@ -64,6 +76,12 @@ public class KycServiceImpl implements KycService {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<KycSubmission> getLatestKycSubmission(UUID userId) {
+        return kycRepository.findTopByUserIdOrderBySubmittedAtDesc(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<KycSubmission> getPendingKycList() {
         return kycRepository.findAllByStatus(KycStatus.REQUESTED);
     }
@@ -75,6 +93,7 @@ public class KycServiceImpl implements KycService {
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
+        ensureRequestedSubmission(submission);
         submission.setStatus(KycStatus.APPROVED);
         submission.setProcessedAt(LocalDateTime.now());
         kycRepository.save(submission);
@@ -94,6 +113,7 @@ public class KycServiceImpl implements KycService {
         KycSubmission submission = kycRepository.findById(submissionId)
                 .orElseThrow(() -> new KycSubmissionNotFoundException("KYC submission not found"));
 
+        ensureRequestedSubmission(submission);
         submission.setStatus(KycStatus.REJECTED);
         submission.setProcessedAt(LocalDateTime.now());
         kycRepository.save(submission);
@@ -103,6 +123,12 @@ public class KycServiceImpl implements KycService {
         userRepository.save(user);
         log.info("Auth event: KYC_REJECTED submissionId={} userId={}", submissionId, user.getId());
         applicationMetrics.recordKycReject(elapsed(startNanos));
+    }
+
+    private void ensureRequestedSubmission(KycSubmission submission) {
+        if (submission.getStatus() != KycStatus.REQUESTED) {
+            throw new IllegalStateException("KYC submission has already been processed");
+        }
     }
 
     private Duration elapsed(long startNanos) {

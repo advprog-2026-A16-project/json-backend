@@ -49,7 +49,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/wallet/payments/midtrans/notifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/order/**", "/api/order").permitAll()
                         .anyRequest().authenticated()
+
                 )
                 .addFilterBefore(requestCorrelationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);

@@ -142,6 +142,24 @@ class ProductControllerWebMvcTest {
     }
 
     @Test
+    void getProductByIdReturnsBadRequestWhenUuidMalformed() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid UUID value for parameter: id"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProductsByJastiperReturnsBadRequestWhenUuidMalformed() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/products/jastiper/not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid UUID value for parameter: jastiperId"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
     void reserveStockReturnsConflictWhenInsufficientStock() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new InsufficientStockException("Insufficient stock"))

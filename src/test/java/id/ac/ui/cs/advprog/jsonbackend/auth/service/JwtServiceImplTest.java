@@ -76,11 +76,25 @@ class JwtServiceImplTest {
     }
 
     @Test
+    void isTokenValidClaims_shouldReturnTrue_forValidToken() {
+        String token = jwtService.generateToken(user);
+        Claims claims = jwtService.extractAllClaims(token);
+        assertTrue(jwtService.isTokenValid(claims, user));
+    }
+
+    @Test
     void isTokenValid_shouldReturnFalse_forDifferentUser() {
         String token = jwtService.generateToken(user);
         User differentUser = new User("other@email.com", "password", Role.TITIPERS);
         differentUser.setId(UUID.randomUUID());
         assertFalse(jwtService.isTokenValid(token, differentUser));
+    }
+
+    @Test
+    void extractAllClaims_shouldReturnClaimsFromGeneratedToken() {
+        String token = jwtService.generateToken(user);
+        Claims claims = jwtService.extractAllClaims(token);
+        assertEquals(user.getUsername(), claims.getSubject());
     }
 
     @Test
