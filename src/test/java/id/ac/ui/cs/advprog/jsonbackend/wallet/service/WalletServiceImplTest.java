@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.jsonbackend.wallet.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.wallet.dto.*;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.exception.InsufficientBalanceException;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.monitoring.WalletMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.TransactionRepository;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.repository.WalletRepository;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +36,9 @@ public class WalletServiceImplTest {
 
     @Mock
     private PaymentGateway paymentGateway;
+
+    @Mock
+    private WalletMetrics walletMetrics;
 
     @InjectMocks
     private WalletServiceImpl walletService;
@@ -68,6 +73,7 @@ public class WalletServiceImplTest {
 
         verify(walletRepository, times(1)).save(wallet);
         verify(transactionRepository, times(1)).save(any());
+        verify(walletMetrics).recordTransactionSuccess(eq(TransactionType.TOP_UP), any(Duration.class));
     }
 
     @Test
@@ -103,6 +109,11 @@ public class WalletServiceImplTest {
         assertThrows(RuntimeException.class, () -> walletService.withdraw(request));
 
         verify(walletRepository, never()).save(wallet);
+        verify(walletMetrics).recordTransactionFailure(
+                eq(TransactionType.WITHDRAWAL),
+                any(Duration.class),
+                any(InsufficientBalanceException.class)
+        );
     }
 
     @Test
@@ -134,6 +145,11 @@ public class WalletServiceImplTest {
         assertThrows(InsufficientBalanceException.class, () -> walletService.payment(request));
 
         verify(walletRepository, never()).save(any());
+        verify(walletMetrics).recordTransactionFailure(
+                eq(TransactionType.PAYMENT),
+                any(Duration.class),
+                any(InsufficientBalanceException.class)
+        );
     }
 
     @Test
@@ -204,6 +220,7 @@ public class WalletServiceImplTest {
         assertEquals(new BigDecimal("50000"), response.getAmount());
         assertEquals(new BigDecimal("100000"), wallet.getBalance());
         verify(walletRepository, never()).save(wallet);
+        verify(walletMetrics).recordPendingTransactionCreated(eq(TransactionType.TOP_UP), any(Duration.class));
     }
 
     @Test
@@ -239,6 +256,7 @@ public class WalletServiceImplTest {
         assertEquals("Bank transfer received", response.getDescription());
         assertEquals(new BigDecimal("150000"), wallet.getBalance());
         verify(walletRepository).save(wallet);
+        verify(walletMetrics).recordVerification(eq(TransactionStatus.SUCCESS), any(Duration.class));
     }
 
     @Test
