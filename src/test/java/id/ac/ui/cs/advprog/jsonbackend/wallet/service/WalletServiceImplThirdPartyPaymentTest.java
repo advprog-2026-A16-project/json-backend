@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Transaction;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.TransactionStatus;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.TransactionType;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.model.Wallet;
+import id.ac.ui.cs.advprog.jsonbackend.wallet.monitoring.WalletMetrics;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGateway;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeRequest;
 import id.ac.ui.cs.advprog.jsonbackend.wallet.payment.PaymentGatewayChargeResponse;
@@ -18,12 +19,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,6 +43,9 @@ class WalletServiceImplThirdPartyPaymentTest {
     @Mock
     private PaymentGateway paymentGateway;
 
+    @Mock
+    private WalletMetrics walletMetrics;
+
     private WalletServiceImpl walletService;
     private UUID userId;
     private Wallet wallet;
@@ -47,7 +53,7 @@ class WalletServiceImplThirdPartyPaymentTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        walletService = new WalletServiceImpl(walletRepository, transactionRepository, paymentGateway);
+        walletService = new WalletServiceImpl(walletRepository, transactionRepository, paymentGateway, walletMetrics);
         userId = UUID.randomUUID();
         wallet = new Wallet();
         wallet.setUserId(userId);
@@ -90,5 +96,6 @@ class WalletServiceImplThirdPartyPaymentTest {
         assertTrue(chargeRequestCaptor.getValue().description().contains("Top-up"));
         verify(walletRepository, never()).save(any());
         verify(transactionRepository, times(2)).save(any(Transaction.class));
+        verify(walletMetrics).recordPendingTransactionCreated(eq(TransactionType.TOP_UP), any(Duration.class));
     }
 }
