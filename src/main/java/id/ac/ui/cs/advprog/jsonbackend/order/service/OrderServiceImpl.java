@@ -70,18 +70,13 @@ public class OrderServiceImpl implements OrderService {
 
             Order savedOrder = orderRepository.save(order);
 
-            // Mempublikasikan event untuk Modul Wallet (Pembayaran)
+            // Mempublikasikan event checkout. Publisher akan reserve stock dulu,
+            // lalu memicu pembayaran wallet jika reservasi berhasil.
             String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
                     savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
                     savedOrder.getTitipersId(), savedOrder.getTotalPrice()
             );
             appendOutboxEvent(OrderEventType.ORDER_CREATED, savedOrder.getId(), orderCreatedPayload);
-
-            // Mempublikasikan event untuk Modul Inventory (Reservasi Stok)
-            String stockReservationPayload = OrderEventPayloadFactory.stockReservationRequestedPayload(
-                    savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity()
-            );
-            appendOutboxEvent(OrderEventType.STOCK_RESERVATION_REQUESTED, savedOrder.getId(), stockReservationPayload);
 
             log.info(
                     "Order event: CREATE_SUCCESS orderId={} productId={} titipersId={} quantity={} totalPrice={}",
@@ -95,10 +90,7 @@ public class OrderServiceImpl implements OrderService {
             return orderMapper.toResponse(savedOrder);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Order event: CREATE_FAILURE productId={} titipersId={} quantity={} reason={}",
-                    request.getProductId(),
-                    request.getTitipersId(),
-                    request.getQuantity(),
+                    "Order event: CREATE_FAILURE reason={}",
                     exception.getClass().getSimpleName()
             );
             applicationMetrics.recordOrderCreateFailure(elapsed(startNanos));
@@ -161,6 +153,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse cancelByJastiper(UUID id) {
         Order order = getOrderOrThrow(id);
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderException("Pesanan yang sudah dibatalkan tidak bisa dibatalkan lagi.");
+        }
 
         if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED) {
             throw new InvalidOrderException("Tidak bisa membatalkan pesanan yang sudah dikirim atau selesai.");
