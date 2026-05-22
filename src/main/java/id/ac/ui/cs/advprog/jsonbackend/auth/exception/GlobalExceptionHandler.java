@@ -82,6 +82,14 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getReason()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("Request failed with invalid state: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         FieldError firstFieldError = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);

@@ -54,6 +54,7 @@ public class KycServiceImplTest {
                 .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(kycRepository.findTopByUserIdOrderBySubmittedAtDesc(userId)).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArguments()[0]);
         when(kycRepository.save(any(KycSubmission.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -98,6 +99,55 @@ public class KycServiceImplTest {
     }
 
     @Test
+    void submitKyc_ShouldThrowException_WhenUserIsNotTitipers() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .email("jastiper@email.com")
+                .role(Role.JASTIPER)
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        KycRequest request = new KycRequest("Ada Wong", "3171234567890124", "https://instagram.com/ada");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> kycService.submitKyc(userId, request));
+
+        assertEquals("Only titipers accounts can submit KYC", exception.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+        verify(kycRepository, never()).save(any(KycSubmission.class));
+    }
+
+    @Test
+    void submitKyc_ShouldThrowException_WhenLatestSubmissionAlreadyApproved() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .email("user@email.com")
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
+        KycSubmission latest = KycSubmission.builder()
+                .user(user)
+                .status(KycStatus.APPROVED)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(kycRepository.findTopByUserIdOrderBySubmittedAtDesc(userId)).thenReturn(Optional.of(latest));
+
+        KycRequest request = new KycRequest("Leon S. Kennedy", "3171234567890123", "https://instagram.com/leon");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> kycService.submitKyc(userId, request));
+
+        assertEquals("KYC has already been approved", exception.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+        verify(kycRepository, never()).save(any(KycSubmission.class));
+    }
+
+    @Test
     void getPendingKycList_ShouldReturnListOfPendingSubmissions() {
         KycSubmission submission1 = KycSubmission.builder().status(KycStatus.REQUESTED).build();
         KycSubmission submission2 = KycSubmission.builder().status(KycStatus.REQUESTED).build();
@@ -110,6 +160,21 @@ public class KycServiceImplTest {
         assertEquals(2, result.size());
         assertEquals(KycStatus.REQUESTED, result.get(0).getStatus());
         verify(kycRepository, times(1)).findAllByStatus(KycStatus.REQUESTED);
+    }
+
+    @Test
+    void getLatestKycSubmission_ShouldReturnRepositoryResult() {
+        UUID userId = UUID.randomUUID();
+        KycSubmission submission = KycSubmission.builder()
+                .id(UUID.randomUUID())
+                .status(KycStatus.REQUESTED)
+                .build();
+        when(kycRepository.findTopByUserIdOrderBySubmittedAtDesc(userId)).thenReturn(Optional.of(submission));
+
+        Optional<KycSubmission> result = kycService.getLatestKycSubmission(userId);
+
+        assertTrue(result.isPresent());
+        assertEquals(submission, result.get());
     }
 
     @Test
@@ -172,5 +237,29 @@ public class KycServiceImplTest {
         verify(kycRepository, times(1)).save(submission);
         verify(userRepository, times(1)).save(user);
         verify(applicationMetrics).recordKycReject(any(Duration.class));
+    }
+
+    @Test
+    void approveKyc_ShouldThrowException_WhenSubmissionAlreadyProcessed() {
+        UUID submissionId = UUID.randomUUID();
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .role(Role.TITIPERS)
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
+        KycSubmission submission = KycSubmission.builder()
+                .id(submissionId)
+                .user(user)
+                .status(KycStatus.REJECTED)
+                .build();
+
+        when(kycRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> kycService.approveKyc(submissionId));
+
+        assertEquals("KYC submission has already been processed", exception.getMessage());
+        verify(kycRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
     }
 }
