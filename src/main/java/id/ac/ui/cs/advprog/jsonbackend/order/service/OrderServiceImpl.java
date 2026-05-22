@@ -70,8 +70,7 @@ public class OrderServiceImpl implements OrderService {
 
             Order savedOrder = orderRepository.save(order);
 
-            // Mempublikasikan event checkout. Publisher akan reserve stock dulu,
-            // lalu memicu pembayaran wallet jika reservasi berhasil.
+            // Mempublikasikan event untuk Modul Wallet (Pembayaran)
             String orderCreatedPayload = OrderEventPayloadFactory.orderCreatedPayload(
                     savedOrder.getId(), savedOrder.getProductId(), savedOrder.getQuantity(),
                     savedOrder.getTitipersId(), savedOrder.getTotalPrice()
@@ -87,10 +86,14 @@ public class OrderServiceImpl implements OrderService {
                     savedOrder.getTotalPrice()
             );
             applicationMetrics.recordOrderCreateSuccess(elapsed(startNanos));
+
             return orderMapper.toResponse(savedOrder);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Order event: CREATE_FAILURE reason={}",
+                    "Order event: CREATE_FAILURE productId={} titipersId={} quantity={} reason={}",
+                    sanitizeLog(request.getProductId()),
+                    sanitizeLog(request.getTitipersId()),
+                    request.getQuantity(),
                     exception.getClass().getSimpleName()
             );
             applicationMetrics.recordOrderCreateFailure(elapsed(startNanos));
@@ -225,5 +228,12 @@ public class OrderServiceImpl implements OrderService {
 
     private Duration elapsed(long startNanos) {
         return Duration.ofNanos(System.nanoTime() - startNanos);
+    }
+
+    private String sanitizeLog(Object input) {
+        if (input == null) {
+            return "null";
+        }
+        return input.toString().replaceAll("[\n\r\t]", "_");
     }
 }

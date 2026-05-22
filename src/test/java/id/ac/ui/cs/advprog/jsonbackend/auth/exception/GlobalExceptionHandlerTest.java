@@ -65,6 +65,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handlesIllegalStateException() {
+        ResponseEntity<Map<String, String>> response =
+                handler.handleIllegalStateException(new IllegalStateException("already processed"));
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("already processed", response.getBody().get("message"));
+    }
+
+    @Test
     void handlesAuthenticationException() {
         ResponseEntity<GlobalExceptionHandler.ErrorResponse> response =
                 handler.handleAuthenticationException(new BadCredentialsException("bad creds"));

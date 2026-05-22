@@ -31,8 +31,13 @@ public class JwtServiceImpl implements JwtService {
     }
 
     @Override
+    public Claims extractAllClaims(String token) {
+        return parseAllClaims(token);
+    }
+
+    @Override
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        Claims claims = extractAllClaims(token);
+        Claims claims = parseAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
@@ -61,15 +66,24 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        return isTokenValid(parseAllClaims(token), userDetails);
+    }
+
+    @Override
+    public boolean isTokenValid(Claims claims, UserDetails userDetails) {
+        String username = claims.getSubject();
+        return username.equals(userDetails.getUsername()) && !isClaimsExpired(claims);
     }
 
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
 
-    private Claims extractAllClaims(String token) {
+    private boolean isClaimsExpired(Claims claims) {
+        return claims.getExpiration().before(new Date());
+    }
+
+    private Claims parseAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(keyProvider.getSignInKey())
                 .build()

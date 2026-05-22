@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-// Sesuai kesepakatan tadi, kita pakai singular "order"
 @RequestMapping("/api/order")
 public class OrderController {
 
@@ -41,7 +40,7 @@ public class OrderController {
 
     // 3. Create Order (Untuk Checkout)
     @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request) {
+    public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         OrderResponse response = orderService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -50,7 +49,7 @@ public class OrderController {
     @PutMapping("/{id}/status")
     public ResponseEntity<OrderResponse> updateStatus(
             @PathVariable UUID id,
-            @RequestBody OrderStatusUpdateRequest request) {
+            @Valid @RequestBody OrderStatusUpdateRequest request) {
         OrderResponse response = orderService.updateStatus(id, request);
         return ResponseEntity.ok(response);
     }
