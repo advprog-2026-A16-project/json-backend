@@ -81,7 +81,8 @@ public class ProfileServiceImpl implements ProfileService {
         if (fullName != null && !fullName.trim().isEmpty()) {
             profile.setFullName(fullName.trim());
         }
-        if (bio != null && !bio.trim().isEmpty()) {
+
+        if (bio != null) {
             profile.setBio(bio.trim());
         }
 

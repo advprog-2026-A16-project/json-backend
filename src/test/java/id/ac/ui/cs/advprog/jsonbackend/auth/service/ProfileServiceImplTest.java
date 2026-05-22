@@ -129,7 +129,7 @@ public class ProfileServiceImplTest {
 
         assertEquals("old_username", updated.getUsername());
         assertEquals("Old Name", updated.getFullName());
-        assertEquals("Old Bio", updated.getBio());
+        assertEquals("", updated.getBio());
     }
 
     @Test

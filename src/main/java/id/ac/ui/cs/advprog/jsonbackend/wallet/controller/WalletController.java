@@ -33,6 +33,11 @@ public class WalletController {
         this.paymentNotificationService = paymentNotificationService;
     }
 
+    @GetMapping
+    public WalletResponse getWallet(@AuthenticationPrincipal User user) {
+        return walletService.createWalletIfAbsent(authenticatedUserId(user));
+    }
+
     @PostMapping("/top-up")
     public WalletResponse topUp(@AuthenticationPrincipal User user, @Valid @RequestBody TopUpRequest request){
         request.setUserId(authenticatedUserId(user));

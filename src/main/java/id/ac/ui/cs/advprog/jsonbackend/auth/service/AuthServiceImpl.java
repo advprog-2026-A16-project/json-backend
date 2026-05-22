@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.jsonbackend.auth.service;
 
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.AuthResponse;
+import id.ac.ui.cs.advprog.jsonbackend.auth.dto.ChangePasswordRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.jsonbackend.auth.enums.AccountStatus;
@@ -116,6 +117,30 @@ public class AuthServiceImpl implements AuthService {
         } catch (RuntimeException exception) {
             log.warn("Auth event: LOGIN_FAILURE email={} reason={}", request.email(), exception.getClass().getSimpleName());
             applicationMetrics.recordLoginFailure(elapsed(startNanos));
+            throw exception;
+        }
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        long startNanos = System.nanoTime();
+        try {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+                throw new PasswordMismatchException("Invalid old password");
+            }
+
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            log.info("Auth event: CHANGE_PASSWORD_SUCCESS userId={} email={}", user.getId(), user.getEmail());
+            applicationMetrics.recordChangePasswordSuccess(elapsed(startNanos));
+        } catch (RuntimeException exception) {
+            log.warn("Auth event: CHANGE_PASSWORD_FAILURE email={} reason={}", email, exception.getClass().getSimpleName());
+            applicationMetrics.recordChangePasswordFailure(elapsed(startNanos));
             throw exception;
         }
     }

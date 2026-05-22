@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.jsonbackend.auth.exception;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InvalidProductException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.InsufficientStockException;
 import id.ac.ui.cs.advprog.jsonbackend.inventory.exception.ProductNotFoundException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.InvalidOrderException;
+import id.ac.ui.cs.advprog.jsonbackend.order.exception.OrderNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -12,9 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.util.UUID;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -56,6 +60,22 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(InvalidOrderException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrderException(InvalidOrderException ex) {
+        log.warn("Request failed with invalid order input: {}", ex.getMessage());
+        return ResponseEntity
+                .status(400)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleOrderNotFoundException(OrderNotFoundException ex) {
+        log.warn("Request failed with missing order: {}", ex.getMessage());
+        return ResponseEntity
+                .status(404)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
         log.warn("Request failed with status {}: {}", ex.getStatusCode(), ex.getReason());
@@ -64,11 +84,33 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getReason()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("Request failed with invalid state: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         FieldError firstFieldError = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
         String message = firstFieldError != null ? firstFieldError.getDefaultMessage() : "Validation failed";
         log.warn("Request validation failed: {}", message);
+
+        return ResponseEntity
+                .status(400)
+                .body(Map.of("message", message));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        String message = ex.getRequiredType() == UUID.class
+                ? "Invalid UUID value for parameter: " + ex.getName()
+                : "Invalid value for parameter: " + ex.getName();
+        log.warn("Request type mismatch for parameter {}: {}", ex.getName(), ex.getValue());
 
         return ResponseEntity
                 .status(400)
